@@ -1,0 +1,52 @@
+{
+  "name": "accounting-saas-foundation",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "test": "vitest run",
+    "qa:tenant-isolation": "node --env-file=.env.local scripts/qa/tenant-isolation.mjs",
+    "qa:accounting-foundation": "node --env-file=.env.local scripts/qa/accounting-foundation.mjs",
+    "qa:posting-engine": "node --env-file=.env.local scripts/qa/posting-engine.mjs",
+    "qa:business-posting-core": "node --env-file=.env.local scripts/qa/business-posting-core.mjs",
+    "qa:settlements:credit-notes": "node --env-file=.env.local scripts/qa/settlements-credit-notes.mjs",
+    "qa:settlements:debit-notes": "node --env-file=.env.local scripts/qa/settlements-debit-notes.mjs",
+    "qa:settlements:customer-receipts": "node --env-file=.env.local scripts/qa/settlements-customer-receipts.mjs",
+    "qa:settlements:supplier-payments": "node --env-file=.env.local scripts/qa/settlements-supplier-payments.mjs",
+    "qa:settlements": "node --env-file=.env.local scripts/qa/settlements.mjs",
+    "qa:expenses": "node --env-file=.env.local scripts/qa/expenses.mjs",
+    "qa:statements": "node --env-file=.env.local scripts/qa/statements.mjs",
+    "qa:dashboard": "node --env-file=.env.local scripts/qa/dashboard.mjs",
+    "qa:inventory-foundation": "node --env-file=.env.local scripts/qa/inventory-foundation.mjs",
+    "qa:inventory-integration": "node --env-file=.env.local scripts/qa/inventory-integration.mjs",
+    "qa:inventory-costing": "node --env-file=.env.local scripts/qa/inventory-costing.mjs",
+    "qa:vat": "node --env-file=.env.local scripts/qa/vat.mjs",
+    "qa:financial-statements": "node --env-file=.env.local scripts/qa/financial-statements.mjs",
+    "qa:audit-permissions": "node --env-file=.env.local scripts/qa/audit-permissions.mjs",
+    "qa:production-readiness": "node --env-file=.env.local scripts/qa/production-readiness.mjs"
+  },
+  "dependencies": {
+    "@supabase/ssr": "^0.12.4",
+    "@supabase/supabase-js": "^2.112.3",
+    "next": "16.3.2",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.62.1",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.3.2",
+    "supabase": "^2.115.0",
+    "tailwindcss": "^4",
+    "typescript": "^5",
+    "vitest": "^4.1.11"
+  }
+}

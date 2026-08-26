@@ -1,0 +1,2 @@
+alter table public.journal_entries drop constraint journal_entries_organization_id_source_type_source_id_key;
+create unique index journal_entries_source_idempotency_idx on public.journal_entries(organization_id,source_type,source_id) where source_id is not null;

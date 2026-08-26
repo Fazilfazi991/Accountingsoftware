@@ -1,0 +1,4 @@
+import { createOrganization } from "./actions";
+import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
+export default async function Onboarding({searchParams}:{searchParams:Promise<{error?:string}>}) { const {data:{user}}=await (await createClient()).auth.getUser(); if(!user) redirect('/login'); const {error}=await searchParams; return <main className="auth-page"><form action={createOrganization} className="auth-card"><div className="auth-brand"><span className="brand-mark">L</span><b>Ledgerly</b></div><h1>Set up your company</h1><p>Start with your company and primary branch. Currency is AED and timezone is Asia/Dubai.</p><label>Company name<input name="name" required /></label><label>Legal name <input name="legal" /></label><label>Branch name<input name="branch" required /></label>{error&&<p className="error">{error}</p>}<button className="button">Create company</button></form></main> }
