@@ -194,8 +194,8 @@ export async function saveParty(value: unknown) {
   if (!p.success) return { error: "Enter valid party details." };
   const c = await requireOrganizationContext(),
     s = await createClient(),
-    v = p.data,
-    { data, error } = await s.rpc("save_party", {
+    v = p.data;
+  let { data, error } = await s.rpc("save_party", {
       p_organization_id: c.organization.id,
       p_kind: v.kind,
       p_id: v.id || null,
@@ -207,6 +207,39 @@ export async function saveParty(value: unknown) {
       p_payment_terms_days: v.paymentTermsDays,
       p_is_active: v.active,
     });
+
+  // Production deployments that have the Phase 4A master-data API but not the
+  // later controls API must still use the canonical customer/supplier workflow.
+  if (error?.code === "PGRST202" || error?.message.includes("save_party")) {
+    const params = {
+      p_organization_id: c.organization.id,
+      p_name: v.name,
+      p_trn: v.trn || null,
+      p_email: v.email || null,
+      p_phone: v.phone || null,
+      p_billing_address: v.address || null,
+      p_payment_terms_days: v.paymentTermsDays,
+    };
+    if (v.id) {
+      const fallback = await s.rpc(
+        v.kind === "customer" ? "update_customer" : "update_supplier",
+        {
+          ...params,
+          [v.kind === "customer" ? "p_customer_id" : "p_supplier_id"]: v.id,
+          p_is_active: v.active,
+        },
+      );
+      error = fallback.error;
+      data = v.id;
+    } else {
+      const fallback = await s.rpc(
+        v.kind === "customer" ? "create_customer" : "create_supplier",
+        params,
+      );
+      error = fallback.error;
+      data = fallback.data;
+    }
+  }
   if (error) return { error: friendly(error.message) };
   revalidatePath("/", "layout");
   return { ok: true as const, id: data as string };

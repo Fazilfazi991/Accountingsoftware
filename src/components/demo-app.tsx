@@ -55,7 +55,6 @@ const groups = [
       ["Stock Opening", "/inventory/opening"],
       ["Stock Adjustment", "/inventory/adjustments"],
       ["Stock Transfer", "/inventory/transfers"],
-      ["Quotations", "/sales/quotations"],
     ],
   ],
   [
@@ -87,8 +86,6 @@ const groups = [
     [
       ["Opening Balances", "/accounting/opening-balances"],
       ["Journal Entry", "/accounting/journals"],
-      ["Bank Transfer", "/banking"],
-      ["Reconciliation", "/banking/reconciliation"],
     ],
   ],
   [

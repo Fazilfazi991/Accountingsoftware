@@ -121,6 +121,23 @@ export function Sidebar({
   route: string;
   onNavigate?: () => void;
 }) {
+  const [mobileGroup, setMobileGroup] = useState<number | null>(() => {
+    const active = groups.findIndex(([, items]) =>
+      items.some(([, href]) => route === href || (href !== "/" && route.startsWith(href))),
+    );
+    return active > 0 ? active : null;
+  });
+  const links = (items: readonly (readonly [string, string])[]) =>
+    items.map(([name, href]) => (
+      <Link
+        onClick={onNavigate}
+        className={route === href || (href !== "/" && route.startsWith(href)) ? "active" : ""}
+        href={href}
+        key={href}
+      >
+        {name}
+      </Link>
+    ));
   return (
     <aside className="sidebar">
       <div className="brand">
@@ -135,26 +152,31 @@ export function Sidebar({
         </button>
       </div>
       <OrganizationIdentity />
-      <nav>
+      <nav className="desktop-nav">
         {groups.map(([group, items], groupIndex) => (
           <div className="nav-group" key={`${group}-${groupIndex}`}>
             {group && <p>{group}</p>}
-            {items.map(([name, href]) => (
-              <Link
-                onClick={onNavigate}
-                className={
-                  route === href || (href !== "/" && route.startsWith(href))
-                    ? "active"
-                    : ""
-                }
-                href={href}
-                key={href}
-              >
-                {name}
-              </Link>
-            ))}
+            {links(items)}
           </div>
         ))}
+      </nav>
+      <nav className="mobile-nav" aria-label="Mobile navigation">
+        {groups.map(([group, items], groupIndex) =>
+          !group ? (
+            <div className="mobile-home" key="mobile-home">{links(items)}</div>
+          ) : (
+            <div className="mobile-nav-group" key={`${group}-${groupIndex}`}>
+              <button
+                type="button"
+                aria-expanded={mobileGroup === groupIndex}
+                onClick={() => setMobileGroup(mobileGroup === groupIndex ? null : groupIndex)}
+              >
+                {group}<span>{mobileGroup === groupIndex ? "−" : "+"}</span>
+              </button>
+              {mobileGroup === groupIndex && <div>{links(items)}</div>}
+            </div>
+          ),
+        )}
       </nav>
       <div className="demo-label">Ledgerly accounting workspace</div>
     </aside>
