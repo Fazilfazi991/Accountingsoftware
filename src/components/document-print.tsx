@@ -33,6 +33,7 @@ export function DocumentPrint({ kind, id }: { kind: string; id: string }) {
     lines,
     source,
     allocations,
+    relationships,
   } = data;
   return (
     <div className="print-document">
@@ -78,6 +79,17 @@ export function DocumentPrint({ kind, id }: { kind: string; id: string }) {
           {source && <span>Source: {source.number}</span>}
         </div>
       </section>
+      {relationships?.length > 0 && (
+        <section className="print-allocations">
+          <h3>Document history</h3>
+          {relationships.map((relation: any) => (
+            <p key={`${relation.direction}:${relation.href}`}>
+              <span>{relation.direction} {relation.label}</span>
+              <Link href={relation.href}>{relation.number}</Link>
+            </p>
+          ))}
+        </section>
+      )}
       {lines.length > 0 && (
         <div className="table-wrap">
           <table>
@@ -85,6 +97,7 @@ export function DocumentPrint({ kind, id }: { kind: string; id: string }) {
               <tr>
                 <th>Description</th>
                 <th>Quantity</th>
+                <th>Unit</th>
                 <th>Unit price</th>
                 <th>Discount</th>
                 <th>VAT</th>
@@ -101,6 +114,7 @@ export function DocumentPrint({ kind, id }: { kind: string; id: string }) {
                   <tr key={l.id}>
                     <td>{l.description}</td>
                     <td>{Number(l.quantity)}</td>
+                    <td>{l.products?.inventory_units?.code || "—"}</td>
                     <td className="amount">{money(l.unit_price)}</td>
                     <td className="amount">{money(l.discount)}</td>
                     <td className="amount">{rate}%</td>
@@ -152,7 +166,7 @@ export function DocumentPrint({ kind, id }: { kind: string; id: string }) {
         </section>
       )}
       <footer>
-        <span>Generated from canonical {d.status} Ledgerly data.</span>
+        <span>This document is generated from the canonical {d.status} record.</span>
         {d.postedJournalId && (
           <Link href={`/accounting/journals/${d.postedJournalId}`}>
             Journal reference

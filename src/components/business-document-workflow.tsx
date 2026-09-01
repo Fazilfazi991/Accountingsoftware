@@ -2,13 +2,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   getBusinessDocumentData,
   postBusinessDocument,
   saveBusinessDocument,
   type BusinessDocumentData,
 } from "@/app/actions/business-documents";
+import { getConversionSources, saveConvertedInvoice } from "@/app/actions/sales-workflow";
 type Kind = "invoice" | "bill";
 type Line = {
   productId: string;
@@ -19,6 +20,11 @@ type Line = {
   taxRateId: string;
   accountId: string;
   locationId: string;
+  sourceType?: "quotation" | "delivery_note";
+  sourceDocumentId?: string;
+  sourceLineId?: string;
+  remaining?: number;
+  sourceDiscountPerUnit?: number;
 };
 const today = new Date().toISOString().slice(0, 10),
   money = (x: unknown) =>
@@ -34,6 +40,9 @@ export function BusinessDocumentWorkflow({
   id?: string;
 }) {
   const router = useRouter(),
+    searchParams = useSearchParams(),
+    conversionSourceType = searchParams.get("sourceType") as "quotation" | "delivery_note" | null,
+    conversionSourceIds = searchParams.get("sourceIds") || "",
     [data, setData] = useState<BusinessDocumentData | null>(null),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
@@ -85,9 +94,26 @@ export function BusinessDocumentWorkflow({
             "",
         );
         setLines([newLine(result, kind)]);
+        const sourceType = conversionSourceType,
+          sourceIds = conversionSourceIds.split(",").filter(Boolean);
+        if (kind === "invoice" && sourceType && sourceIds.length) {
+          void getConversionSources(sourceType, sourceIds).then((sources) => {
+            if ("error" in sources) { setError(sources.error || "Unable to load conversion sources."); return; }
+            setParty(sources.customerId);
+            setReference(`Created from ${sources.documents.map((x: any) => x.quotation_number || x.delivery_note_number).join(", ")}`);
+            setLines(sources.lines.map((x: any) => ({
+              productId:x.product_id, description:x.description, quantity:x.remaining,
+              unitPrice:Number(x.unit_price), discount:Number(x.discount)*Number(x.remaining)/Number(x.quantity), taxRateId:x.tax_rate_id||"",
+              accountId:x.revenue_account_id||defaultAccount(result,"invoice"),
+              locationId: result.locations.find((l:any)=>l.is_default)?.id || result.locations[0]?.id || "",
+              sourceType:x.sourceType, sourceDocumentId:x.sourceDocumentId, sourceLineId:x.id, remaining:x.remaining,
+              sourceDiscountPerUnit:Number(x.discount)/Number(x.quantity),
+            })));
+          });
+        }
       }
     });
-  }, [id, kind]);
+  }, [id, kind, conversionSourceType, conversionSourceIds]);
   if (!data)
     return (
       <>
@@ -163,7 +189,10 @@ export function BusinessDocumentWorkflow({
   async function save(post: boolean) {
     setBusy(true);
     setError("");
-    const result = await saveBusinessDocument({
+    const allocations = lines.filter((x) => x.sourceLineId).map((x) => ({
+      sourceType:x.sourceType!, sourceDocumentId:x.sourceDocumentId!, sourceLineId:x.sourceLineId!, quantity:x.quantity,
+    }));
+    const payload = {
       id,
       kind,
       partyId,
@@ -176,7 +205,10 @@ export function BusinessDocumentWorkflow({
         taxRateId: x.taxRateId || undefined,
         locationId: x.locationId || undefined,
       })),
-    });
+    };
+    const result = kind === "invoice" && !id && allocations.length
+      ? await saveConvertedInvoice({ ...payload, customerId:partyId, allocations })
+      : await saveBusinessDocument(payload);
     if ("error" in result) {
       setError(result.error || "The draft could not be saved.");
       setBusy(false);
@@ -298,11 +330,13 @@ export function BusinessDocumentWorkflow({
                     min="0.0001"
                     step="0.0001"
                     value={line.quantity}
+                    max={line.remaining}
                     onChange={(e) =>
-                      change(index, { quantity: Number(e.target.value) })
+                      change(index, { quantity: Number(e.target.value), ...(line.sourceDiscountPerUnit == null ? {} : { discount:Number(e.target.value)*line.sourceDiscountPerUnit }) })
                     }
                   />
                 </label>
+                {line.sourceLineId && <span className="notice">Source line · maximum remaining {line.remaining}</span>}
                 <label>
                   Unit
                   <input value={p?.inventory_units?.code || "—"} readOnly />

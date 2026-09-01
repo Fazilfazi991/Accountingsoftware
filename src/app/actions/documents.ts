@@ -12,8 +12,16 @@ const kindSchema = z.enum([
   "receipt",
   "payment",
   "expense",
+  "quotation",
+  "delivery-note",
 ]);
 const definitions: any = {
+  quotation: {
+    table:"sales_quotations", number:"quotation_number", date:"quotation_date", partyTable:"customers", partyKey:"customer_id", partyLabel:"Prepared for", lineTable:"sales_quotation_lines", lineFk:"quotation_id", title:"Quotation",
+  },
+  "delivery-note": {
+    table:"delivery_notes", number:"delivery_note_number", date:"delivery_date", partyTable:"customers", partyKey:"customer_id", partyLabel:"Deliver to", lineTable:"delivery_note_lines", lineFk:"delivery_note_id", title:"Goods Delivery Note",
+  },
   invoice: {
     table: "sales_invoices",
     number: "invoice_number",
@@ -128,6 +136,7 @@ export async function getPrintDocument(kindInput: string, idInput: string) {
       lines: any[] = [],
       source: any = null,
       allocations: any[] = [];
+    const relationships: any[] = [];
     if (d.partyTable) {
       const result = await (client.from(d.partyTable) as any)
         .select("id,name,trn,email,phone,billing_address")
@@ -138,7 +147,7 @@ export async function getPrintDocument(kindInput: string, idInput: string) {
     }
     if (d.lineTable) {
       const result = await (client.from(d.lineTable) as any)
-        .select("*,tax_rates(code,name,rate_percent)")
+        .select("*,tax_rates(code,name,rate_percent),products(name,sku,inventory_units(code))")
         .eq(d.lineFk, id.data)
         .eq("organization_id", org)
         .order("id");
@@ -187,9 +196,36 @@ export async function getPrintDocument(kindInput: string, idInput: string) {
         }));
       }
     }
+    if (["quotation", "delivery-note", "invoice"].includes(k.data)) {
+      const related = await client
+        .from("document_conversion_lines")
+        .select("source_type,source_document_id,target_type,target_document_id")
+        .eq("organization_id", org)
+        .or(`source_document_id.eq.${id.data},target_document_id.eq.${id.data}`);
+      const specs = new Map<string, { type: string; id: string; direction: string }>();
+      for (const row of related.data || []) {
+        if (row.source_document_id !== id.data)
+          specs.set(`source:${row.source_type}:${row.source_document_id}`, { type: row.source_type, id: row.source_document_id, direction: "Source" });
+        if (row.target_document_id !== id.data)
+          specs.set(`target:${row.target_type}:${row.target_document_id}`, { type: row.target_type, id: row.target_document_id, direction: "Converted to" });
+      }
+      const relationDefinitions: Record<string, { table: string; number: string; href: (id: string) => string; label: string }> = {
+        quotation: { table: "sales_quotations", number: "quotation_number", href: (x) => `/documents/quotation/${x}`, label: "Quotation" },
+        delivery_note: { table: "delivery_notes", number: "delivery_note_number", href: (x) => `/documents/delivery-note/${x}`, label: "Delivery Note" },
+        sales_invoice: { table: "sales_invoices", number: "invoice_number", href: (x) => `/sales/invoices/${x}`, label: "Sales Invoice" },
+      };
+      for (const spec of specs.values()) {
+        const definition = relationDefinitions[spec.type];
+        if (!definition) continue;
+        const result = await (client.from(definition.table) as any).select(`id,${definition.number}`).eq("organization_id", org).eq("id", spec.id).maybeSingle();
+        if (result.data) relationships.push({ direction: spec.direction, label: definition.label, number: result.data[definition.number], href: definition.href(spec.id) });
+      }
+    }
     const branch =
       context.payload.allBranches.find((x) => x.id === record.branch_id) ||
       null;
+    const calculatedSubtotal=lines.reduce((sum:any,line:any)=>sum+Number(line.quantity)*Number(line.unit_price)-Number(line.discount||0),0),
+      calculatedTax=lines.reduce((sum:any,line:any)=>{const net=Number(line.quantity)*Number(line.unit_price)-Number(line.discount||0);return sum+net*Number(line.tax_rates?.rate_percent||0)/100},0);
     return {
       document: {
         kind: k.data,
@@ -200,9 +236,9 @@ export async function getPrintDocument(kindInput: string, idInput: string) {
         reference: record.reference || "",
         notes: record.notes || "",
         postedJournalId: record.posted_journal_id,
-        subtotal: Number(record[d.subtotal] || 0),
-        tax: Number(record[d.tax] || 0),
-        total: Number(record[d.total] || 0),
+        subtotal: d.subtotal ? Number(record[d.subtotal] || 0) : calculatedSubtotal,
+        tax: d.tax ? Number(record[d.tax] || 0) : calculatedTax,
+        total: d.total ? Number(record[d.total] || 0) : calculatedSubtotal+calculatedTax,
         payee: k.data === "expense" ? record.payee_name || "—" : null,
       },
       organization: context.organization,
@@ -212,6 +248,7 @@ export async function getPrintDocument(kindInput: string, idInput: string) {
       lines,
       source: source ? { id: source.id, number: source[d.sourceNumber] } : null,
       allocations,
+      relationships,
     };
   } catch {
     return { error: "Unable to prepare this document for printing." };

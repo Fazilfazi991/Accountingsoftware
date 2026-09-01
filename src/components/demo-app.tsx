@@ -39,6 +39,7 @@ import { VatReports } from "@/components/vat-reports";
 import { FinancialStatements } from "@/components/financial-statements";
 import { ControlsWorkspace } from "@/components/controls-workspace";
 import { DocumentPrint } from "@/components/document-print";
+import { SalesWorkflow } from "@/components/sales-workflow";
 
 const groups = [
   ["", [["Home", "/"]]],
@@ -46,6 +47,8 @@ const groups = [
     "IMS · Transactions",
     [
       ["Sales Invoice", "/sales/invoices"],
+      ["Quotations", "/sales/quotations"],
+      ["Delivery Notes", "/sales/delivery-notes"],
       ["Sales Return / Credit Note", "/sales/credit-notes"],
       ["Purchase Bill", "/purchases/bills"],
       ["Purchase Return / Debit Note", "/purchases/debit-notes"],
@@ -3194,6 +3197,8 @@ function ContextualApp({ path }: { path: string[] }) {
     "receipt",
     "payment",
     "expense",
+    "quotation",
+    "delivery-note",
   ];
   const print =
     path[0] === "documents" && printKinds.includes(path[1]) && path[2] ? (
@@ -3202,11 +3207,6 @@ function ContextualApp({ path }: { path: string[] }) {
   const productionFallback =
     route === "reports" ? (
       <OperationalReportIndex />
-    ) : route.startsWith("sales/quotations") ? (
-      <ProductionUnavailable
-        title="Quotations"
-        detail="Quotation posting is outside the certified accounting scope."
-      />
     ) : route === "banking" || route === "banking/reconciliation" ? (
       <ProductionUnavailable
         title="Banking"
@@ -3214,7 +3214,17 @@ function ContextualApp({ path }: { path: string[] }) {
       />
     ) : null;
   const business =
-    route === "sales/invoices/new" ? (
+    route === "sales/quotations" ? (
+      <SalesWorkflow kind="quotation" mode="list" />
+    ) : route === "sales/quotations/new" ? (
+      <SalesWorkflow kind="quotation" mode="new" />
+    ) : route === "sales/delivery-notes" ? (
+      <SalesWorkflow kind="delivery_note" mode="list" />
+    ) : route === "sales/delivery-notes/new" ? (
+      <SalesWorkflow kind="delivery_note" mode="new" />
+    ) : route === "sales/invoices" ? (
+      <SalesWorkflow kind="invoice" mode="list" />
+    ) : route === "sales/invoices/new" ? (
       <BusinessDocumentWorkflow kind="invoice" />
     ) : route === "purchases/bills/new" ? (
       <BusinessDocumentWorkflow kind="bill" />

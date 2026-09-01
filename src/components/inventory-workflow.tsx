@@ -981,7 +981,13 @@ function MovementTable({ rows }: { rows: any[] }) {
                   : x.source_document_type === "sales_credit_note"
                     ? "/sales/credit-notes"
                     : x.source_document_type === "purchase_debit_note"
-                      ? "/purchases/debit-notes"
+                  ? "/purchases/debit-notes"
+                      : x.source_document_type === "delivery_note"
+                        ? "/sales/delivery-notes"
+                        : x.source_document_type === "stock_operation"
+                          ? x.movement_type === "opening"
+                            ? "/inventory/opening"
+                            : "/inventory/adjustments"
                       : null;
             return (
               <tr key={x.id}>
@@ -1000,7 +1006,7 @@ function MovementTable({ rows }: { rows: any[] }) {
                   {documentRoot && x.source_document_id ? (
                     <Link
                       className="record-link"
-                      href={`${documentRoot}/${x.source_document_id}`}
+                      href={x.source_document_type === "stock_operation" ? `${documentRoot}?operation=${x.source_document_id}` : `${documentRoot}/${x.source_document_id}`}
                     >
                       {x.source_document_number || x.reference || "View source"}
                     </Link>
