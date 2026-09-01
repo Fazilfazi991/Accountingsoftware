@@ -17,7 +17,11 @@ if (!expectedRef) {
 let actualRef;
 try {
   const host = new URL(rawUrl).hostname;
-  actualRef = host.endsWith(".supabase.co") ? host.slice(0, -".supabase.co".length) : null;
+  actualRef = host.endsWith(".supabase.co")
+    ? host.slice(0, -".supabase.co".length)
+    : ["127.0.0.1", "localhost"].includes(host)
+      ? "local"
+      : null;
 } catch {
   actualRef = null;
 }

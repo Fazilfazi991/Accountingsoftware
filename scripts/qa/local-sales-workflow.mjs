@@ -1,0 +1,42 @@
+import { createClient } from "@supabase/supabase-js";
+import { randomUUID } from "node:crypto";
+import "./safety.mjs";
+
+const make=()=>createClient(process.env.NEXT_PUBLIC_SUPABASE_URL,process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+const a=make(),b=make(),anon=make(),pass=(x,m)=>{if(!x)throw Error(`FAIL ${m}`);console.log(`PASS ${m}`)};
+const rpc=async(c,n,p)=>{const r=await c.rpc(n,p);if(r.error)throw r.error;return r.data};
+const one=async q=>{const r=await q.single();if(r.error)throw r.error;return r.data};
+await a.auth.signInWithPassword({email:process.env.LEDGERLY_QA_USER_A_EMAIL,password:process.env.LEDGERLY_QA_USER_A_PASSWORD});
+await b.auth.signInWithPassword({email:process.env.LEDGERLY_QA_USER_B_EMAIL,password:process.env.LEDGERLY_QA_USER_B_PASSWORD});
+const org=await one(a.from("organizations").select("id").eq("slug","ledgerly-qa-company-a"));
+const orgB=await one(b.from("organizations").select("id").eq("slug","ledgerly-qa-company-b"));
+await rpc(a,"initialize_accounting_setup",{p_organization_id:org.id,p_financial_year_name:"Local QA 2026",p_start_date:"2026-01-01",p_end_date:"2026-12-31"});
+await rpc(a,"initialize_inventory_foundation",{p_organization_id:org.id});
+const branch=await one(a.from("branches").select("id").eq("organization_id",org.id).eq("status","active").limit(1));
+const location=await one(a.from("inventory_locations").select("id").eq("organization_id",org.id).eq("branch_id",branch.id).eq("status","active").limit(1));
+const units={}; for(const code of ["PCS","BOX","KG"])units[code]=(await one(a.from("inventory_units").select("id").eq("organization_id",org.id).eq("code",code))).id;
+pass(Object.keys(units).length===3,"PCS, BOX and KG seeded by initializer");
+const vat=await one(a.from("tax_rates").select("id").eq("organization_id",org.id).eq("rate_percent",5).eq("sales_enabled",true).limit(1));
+const revenue=await one(a.from("accounts").select("id").eq("organization_id",org.id).eq("system_key","sales_revenue"));
+const customer=await rpc(a,"create_customer",{p_organization_id:org.id,p_name:"LOCAL QA Sales Workflow Customer"});
+const customer2=await rpc(a,"create_customer",{p_organization_id:org.id,p_name:"LOCAL QA Sales Workflow Customer 2"});
+const specs=[["LOCAL QA ITEM A","LOCAL-QA-A","PCS",200,100],["LOCAL QA ITEM B","LOCAL-QA-B","BOX",100,50],["LOCAL QA KG ITEM","LOCAL-QA-KG","KG",100,20]],products={};
+for(const [name,sku,unit,opening,price] of specs){const p=await one(a.from("products").insert({organization_id:org.id,kind:"product",name,sku,unit_id:units[unit],track_inventory:true}).select("id"));products[unit]={...p,name,price};await rpc(a,"post_stock_operation",{p_operation_id:randomUUID(),p_organization_id:org.id,p_branch_id:branch.id,p_operation_type:"opening",p_transaction_date:"2026-09-01",p_product_id:p.id,p_source_location_id:location.id,p_destination_location_id:null,p_quantity:opening,p_unit_cost:10,p_reference:`LOCAL-QA-SWF-${unit}`,p_reason:"Canonical local QA",p_notes:null});}
+const line=(u,q)=>({product_id:products[u].id,description:products[u].name,quantity:q,unit_price:products[u].price,discount:0,tax_rate_id:vat.id,revenue_account_id:revenue.id});
+const quote=async(lines,c=customer)=>rpc(a,"save_operational_document",{p_org:org.id,p_kind:"quotation",p_id:null,p_customer:c,p_branch:branch.id,p_date:"2026-09-01",p_expiry:"2026-09-30",p_reference:`LOCAL-QA-SWF-Q-${randomUUID()}`,p_notes:null,p_lines:lines});
+const qlines=async id=>(await a.from("sales_quotation_lines").select("*").eq("quotation_id",id)).data;
+const allocations=(type,doc,lines)=>lines.map(x=>({source_type:type,source_document_id:doc,source_line_id:x.id,quantity:x.quantity}));
+const invoiceLines=lines=>lines.map(x=>({product_id:x.product_id,description:x.description,quantity:x.quantity,unit_price:x.unit_price,discount:x.discount,tax_rate_id:x.tax_rate_id,revenue_account_id:x.revenue_account_id,inventory_location_id:location.id}));
+const convertedInvoice=async(type,docs,lines,alloc)=>rpc(a,"create_converted_sales_invoice_draft",{p_organization_id:org.id,p_customer_id:customer,p_invoice_date:"2026-09-01",p_due_date:"2026-09-01",p_lines:invoiceLines(lines),p_allocations:alloc,p_branch_id:branch.id,p_reference:`LOCAL-QA-SWF-I-${randomUUID()}`,p_notes:null});
+let q=await quote([line("PCS",2)]),ql=await qlines(q),inv=await convertedInvoice("quotation",[q],ql,allocations("quotation",q,ql));await rpc(a,"post_sales_invoice",{p_organization_id:org.id,p_invoice_id:inv});pass(true,"Quotation to Invoice");
+q=await quote([line("BOX",2)]);ql=await qlines(q);const dn=await rpc(a,"create_converted_delivery_note",{p_org:org.id,p_customer:customer,p_branch:branch.id,p_date:"2026-09-01",p_reference:`LOCAL-QA-SWF-DN-${randomUUID()}`,p_notes:null,p_lines:ql,p_allocations:allocations("quotation",q,ql)});const dnl=(await a.from("delivery_note_lines").select("*").eq("delivery_note_id",dn)).data;inv=await convertedInvoice("delivery_note",[dn],dnl,allocations("delivery_note",dn,dnl));await rpc(a,"post_sales_invoice",{p_organization_id:org.id,p_invoice_id:inv});pass(true,"Quotation to Delivery Note to Invoice");
+const q1=await quote([line("PCS",1)]),q2=await quote([line("KG",2.5)]),l1=await qlines(q1),l2=await qlines(q2);inv=await convertedInvoice("quotation",[q1,q2],[...l1,...l2],[...allocations("quotation",q1,l1),...allocations("quotation",q2,l2)]);await rpc(a,"post_sales_invoice",{p_organization_id:org.id,p_invoice_id:inv});pass(true,"Multiple quotations and decimal KG conversion");
+q=await quote([line("PCS",100)]);ql=await qlines(q);for(const qty of [40,35,25]){const x={...ql[0],quantity:qty};const id=await convertedInvoice("quotation",[q],[x],[{source_type:"quotation",source_document_id:q,source_line_id:ql[0].id,quantity:qty}]);await rpc(a,"post_sales_invoice",{p_organization_id:org.id,p_invoice_id:id});}pass((await rpc(a,"source_line_remaining",{p_org:org.id,p_type:"quotation",p_line:ql[0].id}))===0,"Partial 40/35/25 conversion reaches zero");
+const over=await a.rpc("create_converted_sales_invoice_draft",{p_organization_id:org.id,p_customer_id:customer,p_invoice_date:"2026-09-01",p_due_date:"2026-09-01",p_lines:invoiceLines([{...ql[0],quantity:1}]),p_allocations:[{source_type:"quotation",source_document_id:q,source_line_id:ql[0].id,quantity:1}],p_branch_id:branch.id});pass(Boolean(over.error),"Over-conversion denied");
+q=await quote([line("PCS",1)]);ql=await qlines(q);const args={p_organization_id:org.id,p_customer_id:customer,p_invoice_date:"2026-09-01",p_due_date:"2026-09-01",p_lines:invoiceLines(ql),p_allocations:allocations("quotation",q,ql),p_branch_id:branch.id};const race=await Promise.all([a.rpc("create_converted_sales_invoice_draft",args),a.rpc("create_converted_sales_invoice_draft",args)]);pass(race.filter(x=>!x.error).length===1,"Concurrent conversion permits exactly one winner");
+pass(Boolean((await anon.rpc("create_converted_delivery_note",{p_org:org.id,p_customer:customer,p_branch:branch.id,p_date:"2026-09-01",p_lines:[],p_allocations:[]})).error),"Anonymous conversion RPC denied");
+pass(Boolean((await a.rpc("next_operational_document_number",{p_org:org.id,p_prefix:"X",p_table:"sales_quotations",p_column:"quotation_number"})).error),"Authenticated internal numbering helper denied");
+pass(Boolean((await b.rpc("source_line_remaining",{p_org:org.id,p_type:"quotation",p_line:ql[0].id})).error),"Cross-tenant remaining calculation denied");
+for(const table of ["sales_quotations","sales_quotation_lines","delivery_notes","delivery_note_lines","document_conversion_lines"]){const r=await b.from(table).select("id").eq("organization_id",org.id);pass(!r.error&&r.data.length===0,`Cross-tenant ${table} rows hidden`)}
+const balances=await a.from("journal_entries").select("id,journal_lines(debit_amount,credit_amount)").eq("organization_id",org.id).eq("status","posted");pass(balances.data.every(j=>Math.abs(j.journal_lines.reduce((s,l)=>s+Number(l.debit_amount)-Number(l.credit_amount),0))<0.00001),"Posted journals balance");
+console.log("Local Sales Workflow QA complete");

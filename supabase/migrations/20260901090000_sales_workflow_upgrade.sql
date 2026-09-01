@@ -113,7 +113,7 @@ begin
 end $$;
 
 create or replace function public.source_line_remaining(p_org uuid,p_type public.conversion_source_type,p_line uuid)
-returns numeric language plpgsql stable security definer set search_path=pg_catalog,public as $$
+returns numeric language plpgsql security definer set search_path=pg_catalog,public as $$
 begin
   perform public.assert_accounting_owner(p_org);
   return (

@@ -25,13 +25,15 @@ for (const table of ["organizations", "organization_memberships", "branches", "o
   assert(Boolean(error) || anonymousCount === 0, `Anonymous cannot read ${table}`);
 }
 const updateA = await a.from("organizations").update({ name: "blocked" }).eq("id", orgB.id).select("id");
-assert(!updateA.error && updateA.data.length === 0, "User A cross-tenant organization update denied");
+assert(Boolean(updateA.error) || updateA.data.length === 0, "User A cross-tenant organization update denied");
 const updateB = await b.from("branches").update({ name: "blocked" }).eq("organization_id", orgA.id).select("id");
-assert(!updateB.error && updateB.data.length === 0, "User B cross-tenant branch update denied");
+assert(Boolean(updateB.error) || updateB.data.length === 0, "User B cross-tenant branch update denied");
 const { data: event } = await a.from("audit_events").select("id").eq("organization_id", orgA.id).limit(1).single();
 assert(event, "User A can resolve a permitted audit event");
-assert((await a.from("audit_events").update({ event_type: "tampered" }).eq("id", event.id).select("id")).data.length === 0, "Audit update denied");
-assert((await a.from("audit_events").delete().eq("id", event.id).select("id")).data.length === 0, "Audit delete denied");
+const auditUpdate = await a.from("audit_events").update({ event_type: "tampered" }).eq("id", event.id).select("id");
+assert(Boolean(auditUpdate.error) || auditUpdate.data.length === 0, "Audit update denied");
+const auditDelete = await a.from("audit_events").delete().eq("id", event.id).select("id");
+assert(Boolean(auditDelete.error) || auditDelete.data.length === 0, "Audit delete denied");
 assert((await a.rpc("update_organization", { p_organization_id: orgB.id, p_name: "blocked", p_legal_name: "", p_timezone: "Asia/Dubai" })).error, "User A cross-tenant RPC denied");
 assert((await b.rpc("update_organization", { p_organization_id: orgA.id, p_name: "blocked", p_legal_name: "", p_timezone: "Asia/Dubai" })).error, "User B cross-tenant RPC denied");
 assert((await anon.rpc("create_organization", { p_name: "blocked", p_legal_name: "", p_slug: "blocked-anon", p_branch_name: "blocked" })).error, "Anonymous create-organization RPC denied");
