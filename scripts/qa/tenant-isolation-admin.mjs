@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { execFileSync } from "node:child_process";
 import "./safety.mjs";
 
 const status = process.argv[2];
@@ -8,10 +9,9 @@ const { data: users, error: userError } = await admin.auth.admin.listUsers();
 if (userError) throw userError;
 const user = users.users.find((item) => item.email === 'ledgerly-qa-user-a@ledgerly.test');
 if (!user) throw new Error('Expected User A fixture not found');
-const { data: org, error: orgError } = await admin.from('organizations').select('id').eq('slug', 'ledgerly-qa-company-a').single();
-if (orgError || !org) throw new Error('Expected Company A fixture not found');
-const { data: membership, error: membershipError } = await admin.from('organization_memberships').select('id,user_id,organization_id').eq('user_id', user.id).eq('organization_id', org.id).single();
-if (membershipError || !membership || membership.user_id !== user.id || membership.organization_id !== org.id) throw new Error('Expected QA membership not found');
-const { error: updateError } = await admin.from('organization_memberships').update({ membership_status: status }).eq('id', membership.id);
-if (updateError) throw updateError;
+const api = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL);
+if (!['127.0.0.1','localhost'].includes(api.hostname)) throw new Error('Direct fixture administration is local-only');
+const sql = `update public.organization_memberships set membership_status='${status}' where user_id='${user.id}'::uuid and organization_id=(select id from public.organizations where slug='ledgerly-qa-company-a') returning id;`;
+const updated = execFileSync('docker', ['exec', process.env.LEDGERLY_QA_LOCAL_DB_CONTAINER || 'supabase_db_Accounting_Software', 'psql', '-U', 'postgres', '-d', 'postgres', '-At', '-v', 'ON_ERROR_STOP=1', '-c', sql], { encoding:'utf8' }).trim();
+if (!updated) throw new Error('Expected QA membership not found');
 console.log(`PASS QA fixture set User A membership ${status}`);

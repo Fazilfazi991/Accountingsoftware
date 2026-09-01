@@ -1,0 +1,23 @@
+import { createClient } from "@supabase/supabase-js";
+import "./safety.mjs";
+
+const c=createClient(process.env.NEXT_PUBLIC_SUPABASE_URL,process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+const auth=await c.auth.signInWithPassword({email:process.env.LEDGERLY_QA_USER_A_EMAIL,password:process.env.LEDGERLY_QA_USER_A_PASSWORD});if(auth.error)throw auth.error;
+const one=async q=>{const r=await q.single();if(r.error)throw r.error;return r.data},rpc=async(n,p)=>{const r=await c.rpc(n,p);if(r.error)throw r.error;return r.data};
+const org=await one(c.from("organizations").select("id").eq("slug","ledgerly-qa-company-a")),branch=await one(c.from("branches").select("id").eq("organization_id",org.id).eq("status","active").limit(1)),location=await one(c.from("inventory_locations").select("id").eq("organization_id",org.id).eq("branch_id",branch.id).limit(1));
+const customers=(await c.from("customers").select("id,name").eq("organization_id",org.id)).data,customer=customers.find(x=>x.name.endsWith("Customer")).id,customer2=customers.find(x=>x.name.endsWith("Customer 2")).id;
+const ps=(await c.from("products").select("id,name,sku,inventory_units(code)").eq("organization_id",org.id).in("sku",["LOCAL-QA-A","LOCAL-QA-B","LOCAL-QA-KG"])).data,p=Object.fromEntries(ps.map(x=>[x.inventory_units.code,x]));
+const vat=await one(c.from("tax_rates").select("id").eq("organization_id",org.id).eq("rate_percent",5).limit(1)),revenue=await one(c.from("accounts").select("id").eq("organization_id",org.id).eq("system_key","sales_revenue"));
+const line=(u,q=1)=>({product_id:p[u].id,description:p[u].name,quantity:q,unit_price:u==="PCS"?100:u==="BOX"?50:20,discount:0,tax_rate_id:vat.id,revenue_account_id:revenue.id});
+const quote=(ref,lines,cust=customer,date="2026-09-01")=>rpc("save_operational_document",{p_org:org.id,p_kind:"quotation",p_id:null,p_customer:cust,p_branch:branch.id,p_date:date,p_expiry:"2026-09-30",p_reference:ref,p_notes:"Browser closure",p_lines:lines});
+const dn=(ref,lines,cust=customer,date="2026-09-01")=>rpc("save_operational_document",{p_org:org.id,p_kind:"delivery_note",p_id:null,p_customer:cust,p_branch:branch.id,p_date:date,p_expiry:null,p_reference:ref,p_notes:"Browser closure",p_lines:lines});
+const invoice=(ref,lines,date="2026-09-01")=>rpc("create_sales_invoice_draft",{p_organization_id:org.id,p_customer_id:customer,p_invoice_date:date,p_due_date:date,p_lines:lines.map(x=>({...x,inventory_location_id:location.id})),p_branch_id:branch.id,p_reference:ref,p_notes:"Browser closure"});
+const uiQ1=await quote("LOCAL-QA-UI-Q01",[line("PCS",5),line("KG",1.25)]),uiQ2=await quote("LOCAL-QA-UI-Q02",[line("BOX",3),line("KG",.5)]),incompatibleQ=await quote("LOCAL-QA-UI-Q-OTHER",[line("PCS",1)],customer2);
+for(let i=0;i<30;i++)await invoice(`LOCAL-QA-PAGE-I-${String(i).padStart(2,"0")}`,[line("PCS",1)]);
+const searchInvoice=await invoice("LOCAL-QA-PAGE2-ONLY-REF",[line("KG",.75)],"2026-08-01");
+for(let i=0;i<30;i++)await quote(`LOCAL-QA-PAGE-Q-${String(i).padStart(2,"0")}`,[line("PCS",1)],customer,"2026-09-01");
+for(let i=0;i<30;i++)await dn(`LOCAL-QA-PAGE-DN-${String(i).padStart(2,"0")}`,[line("BOX",1)],customer,"2026-09-01");
+const longLines=Array.from({length:45},(_,i)=>({...line(i===44?"KG":"PCS",i===44?.75:1),description:i===44?"LOCAL QA KG ITEM — long A4 decimal line 0.75 KG":`LOCAL QA LONG PRINT ITEM ${String(i+1).padStart(2,"0")} — deterministic multi-page description`}));
+const longQuote=await quote("LOCAL-QA-LONG-A4-PRINT",longLines);
+const rows=(await c.from("sales_quotations").select("id,quotation_number,reference,customer_id").in("id",[uiQ1,uiQ2,incompatibleQ,longQuote])).data;
+console.log("BROWSER_FIXTURES "+JSON.stringify({uiQ1,uiQ2,incompatibleQ,longQuote,searchInvoice,quotations:rows}));

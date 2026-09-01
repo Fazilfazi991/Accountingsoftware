@@ -1,7 +1,7 @@
 "use client";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   getBusinessDocumentData,
@@ -10,6 +10,7 @@ import {
   type BusinessDocumentData,
 } from "@/app/actions/business-documents";
 import { getConversionSources, saveConvertedInvoice } from "@/app/actions/sales-workflow";
+import { dubaiCalendarDate } from "@/lib/dubai-date";
 type Kind = "invoice" | "bill";
 type Line = {
   productId: string;
@@ -26,7 +27,7 @@ type Line = {
   remaining?: number;
   sourceDiscountPerUnit?: number;
 };
-const today = new Date().toISOString().slice(0, 10),
+const today = dubaiCalendarDate(),
   money = (x: unknown) =>
     new Intl.NumberFormat("en-AE", {
       style: "currency",
@@ -51,7 +52,8 @@ export function BusinessDocumentWorkflow({
     [dueDate, setDue] = useState(today),
     [reference, setReference] = useState(""),
     [notes, setNotes] = useState(""),
-    [lines, setLines] = useState<Line[]>([]);
+    [lines, setLines] = useState<Line[]>([]),
+    dirty = useRef({ party:false, reference:false, lines:false });
   useEffect(() => {
     void getBusinessDocumentData().then((result) => {
       if ("error" in result) {
@@ -99,9 +101,9 @@ export function BusinessDocumentWorkflow({
         if (kind === "invoice" && sourceType && sourceIds.length) {
           void getConversionSources(sourceType, sourceIds).then((sources) => {
             if ("error" in sources) { setError(sources.error || "Unable to load conversion sources."); return; }
-            setParty(sources.customerId);
-            setReference(`Created from ${sources.documents.map((x: any) => x.quotation_number || x.delivery_note_number).join(", ")}`);
-            setLines(sources.lines.map((x: any) => ({
+            if (!dirty.current.party) setParty(sources.customerId);
+            if (!dirty.current.reference) setReference(`Created from ${sources.documents.map((x: any) => x.quotation_number || x.delivery_note_number).join(", ")}`);
+            if (!dirty.current.lines) setLines(sources.lines.map((x: any) => ({
               productId:x.product_id, description:x.description, quantity:x.remaining,
               unitPrice:Number(x.unit_price), discount:Number(x.discount)*Number(x.remaining)/Number(x.quantity), taxRateId:x.tax_rate_id||"",
               accountId:x.revenue_account_id||defaultAccount(result,"invoice"),
@@ -138,10 +140,12 @@ export function BusinessDocumentWorkflow({
         ? x.account_type === "income"
         : ["expense", "asset"].includes(x.account_type),
     );
-  const change = (index: number, next: Partial<Line>) =>
+  const change = (index: number, next: Partial<Line>) => {
+    dirty.current.lines = true;
     setLines((current) =>
       current.map((x, i) => (i === index ? { ...x, ...next } : x)),
     );
+  };
   const chooseProduct = (index: number, productId: string) => {
     const p = data.products.find((x) => x.id === productId),
       tracked = p?.kind === "product" && p.track_inventory,
@@ -254,7 +258,7 @@ export function BusinessDocumentWorkflow({
         <div className="form-grid">
           <label>
             {kind === "invoice" ? "Customer" : "Supplier"}
-            <select value={partyId} onChange={(e) => setParty(e.target.value)}>
+            <select value={partyId} onChange={(e) => { dirty.current.party = true; setParty(e.target.value); }}>
               {parties.map((x) => (
                 <option key={x.id} value={x.id}>
                   {x.name}
@@ -286,7 +290,7 @@ export function BusinessDocumentWorkflow({
             Reference
             <input
               value={reference}
-              onChange={(e) => setReference(e.target.value)}
+              onChange={(e) => { dirty.current.reference = true; setReference(e.target.value); }}
             />
           </label>
         </div>
@@ -294,9 +298,7 @@ export function BusinessDocumentWorkflow({
           <h2>Items and services</h2>
           <button
             className="text-button"
-            onClick={() =>
-              setLines((current) => [...current, newLine(data, kind)])
-            }
+            onClick={() => { dirty.current.lines = true; setLines((current) => [...current, newLine(data, kind)]); }}
           >
             + Add line
           </button>
@@ -435,9 +437,7 @@ export function BusinessDocumentWorkflow({
                   className="icon-button"
                   aria-label="Remove line"
                   disabled={lines.length === 1}
-                  onClick={() =>
-                    setLines((current) => current.filter((_, i) => i !== index))
-                  }
+                  onClick={() => { dirty.current.lines = true; setLines((current) => current.filter((_, i) => i !== index)); }}
                 >
                   ×
                 </button>
