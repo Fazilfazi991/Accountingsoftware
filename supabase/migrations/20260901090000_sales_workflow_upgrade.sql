@@ -113,11 +113,16 @@ begin
 end $$;
 
 create or replace function public.source_line_remaining(p_org uuid,p_type public.conversion_source_type,p_line uuid)
-returns numeric language sql stable security definer set search_path=pg_catalog,public as $$
-  select greatest(0,coalesce(
+returns numeric language plpgsql stable security definer set search_path=pg_catalog,public as $$
+begin
+  perform public.assert_accounting_owner(p_org);
+  return (
+    select greatest(0,coalesce(
     case when p_type='quotation' then (select quantity from public.sales_quotation_lines where id=p_line and organization_id=p_org)
          else (select quantity from public.delivery_note_lines where id=p_line and organization_id=p_org) end,0)
-    - coalesce((select sum(quantity) from public.document_conversion_lines where organization_id=p_org and source_type=p_type and source_line_id=p_line),0));
+    - coalesce((select sum(quantity) from public.document_conversion_lines where organization_id=p_org and source_type=p_type and source_line_id=p_line),0))
+  );
+end;
 $$;
 
 create or replace function public.save_operational_document(
@@ -187,6 +192,7 @@ end $$;
 
 grant select on public.sales_quotations,public.sales_quotation_lines,public.delivery_notes,public.delivery_note_lines,public.document_conversion_lines to authenticated;
 revoke all on function public.next_operational_document_number(uuid,text,regclass,name),public.source_line_remaining(uuid,public.conversion_source_type,uuid),public.save_operational_document(uuid,text,uuid,uuid,uuid,date,date,text,text,jsonb),public.record_document_conversions(uuid,public.conversion_target_type,uuid,jsonb) from public,anon;
+revoke all on function public.next_operational_document_number(uuid,text,regclass,name) from authenticated;
 grant execute on function public.source_line_remaining(uuid,public.conversion_source_type,uuid),public.save_operational_document(uuid,text,uuid,uuid,uuid,date,date,text,text,jsonb),public.record_document_conversions(uuid,public.conversion_target_type,uuid,jsonb) to authenticated;
 
 -- KG is already seeded by initialize_inventory_foundation alongside every other
