@@ -190,7 +190,7 @@ export function Sidebar({ groups, route, collapsed, onToggleCollapsed, onNavigat
       <nav className="desktop-nav" aria-label="Primary navigation">
         {groups.map((group, groupIndex) => {
           const active = groupIsActive(group, route);
-          const content = <><span className="nav-icon"><NavigationGlyph name={group.icon} /></span><span className="nav-label">{group.label}</span>{group.sections && <span className="nav-chevron" aria-hidden="true">›</span>}<span className="nav-tooltip" role="tooltip">{group.label}</span></>;
+          const content = <><span className="nav-icon"><NavigationGlyph name={group.icon} /></span><span className="nav-label">{group.label}</span>{group.sections && <span className="nav-chevron" aria-hidden="true">›</span>}{openGroup === null && <span className="nav-tooltip" role="tooltip">{group.label}</span>}</>;
           return group.href ? (
             <Link aria-label={group.label} className={active ? "primary-nav-item active" : "primary-nav-item"} href={group.href} key={group.label} onClick={navigate}>{content}</Link>
           ) : (
