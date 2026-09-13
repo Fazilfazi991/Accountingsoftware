@@ -165,7 +165,7 @@ body,.main{overflow-x:hidden}.app,.content,.dashboard-grid,.panel{min-width:0}
   left: calc(100% + 10px);
   top: 76px;
   z-index: 55;
-  width: 332px;
+  width: 306px;
   max-height: calc(100vh - 100px);
   display: flex;
   flex-direction: column;
