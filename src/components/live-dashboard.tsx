@@ -66,12 +66,12 @@ function SectionHeader({ id, title, description, action }: { id: string; title: 
   return <div className="dashboard-section-head"><div><h2 id={id}>{title}</h2><p>{description}</p></div>{action}</div>;
 }
 
-function ActivityPulse({ activities, branchName }: { activities: DashboardActivity[]; branchName: string }) {
+function RecentPostedValues({ activities, branchName }: { activities: DashboardActivity[]; branchName: string }) {
   const rows = activities.slice(0, 8);
   const largest = Math.max(...rows.map((row) => Math.abs(Number(row.amount))), 1);
   return (
     <section className="dashboard-surface dashboard-pulse" aria-labelledby="dashboard-pulse-title">
-      <SectionHeader id="dashboard-pulse-title" title="Posted activity pulse" description={`Latest transaction values in ${branchName}`} action={<span className="dashboard-period">Latest {rows.length}</span>} />
+      <SectionHeader id="dashboard-pulse-title" title="Recent posted values" description={`Latest posted document values in ${branchName}`} action={<span className="dashboard-period">Latest {rows.length}</span>} />
       {rows.length ? (
         <div className="dashboard-pulse-chart" role="img" aria-label="Bar chart of the latest posted source-document values">
           {rows.map((row) => (
@@ -161,7 +161,7 @@ function CashAndBank({ data }: { data: DashboardData }) {
 }
 
 function DashboardLoading() {
-  return <div className="dashboard-loading" aria-busy="true" aria-label="Loading dashboard"><div className="dashboard-primary-kpis">{[1, 2, 3, 4].map((item) => <span className="dashboard-skeleton-card" key={item} />)}</div><div className="dashboard-secondary-strip">{[1, 2, 3, 4].map((item) => <span className="dashboard-skeleton-line" key={item} />)}</div><div className="dashboard-main-grid"><div className="dashboard-command-column"><span className="dashboard-skeleton-panel short" /><span className="dashboard-skeleton-panel" /></div><div className="dashboard-insight-column"><span className="dashboard-skeleton-panel tall" /><span className="dashboard-skeleton-panel" /></div></div></div>;
+  return <div className="dashboard-loading" aria-busy="true" aria-label="Loading dashboard"><div className="dashboard-primary-kpis">{[1, 2, 3, 4].map((item) => <span className="dashboard-skeleton-card" key={item} />)}</div><div className="dashboard-secondary-strip">{[1, 2].map((item) => <span className="dashboard-skeleton-line" key={item} />)}</div><div className="dashboard-main-grid"><div className="dashboard-command-column"><span className="dashboard-skeleton-panel short" /><span className="dashboard-skeleton-panel" /></div><div className="dashboard-insight-column"><span className="dashboard-skeleton-panel tall" /><span className="dashboard-skeleton-panel" /></div></div></div>;
 }
 
 export function LiveDashboard() {
@@ -185,20 +185,18 @@ export function LiveDashboard() {
   }, [branch.id, organization.id]);
 
   const primaryCards = data ? [
-    { label: "Cash & Bank", value: Number(data.cash_on_hand) + Number(data.cash_at_bank), note: `${money(data.cash_on_hand)} cash · ${money(data.cash_at_bank)} bank`, href: "/reports/cash-flow", icon: "bank" as const, tone: "cash" },
+    { label: "Cash & Bank", value: Number(data.cash_on_hand) + Number(data.cash_at_bank), note: "Combined posted balance", href: "/reports/cash-flow", icon: "bank" as const, tone: "cash" },
     { label: "Receivables", value: data.receivables, note: `${data.receivable_count} open invoice${data.receivable_count === 1 ? "" : "s"}`, href: "/reports/accounts-receivable", icon: "receivable" as const, tone: "receivable" },
     { label: "Payables", value: data.payables, note: `${data.payable_count} open bill${data.payable_count === 1 ? "" : "s"}`, href: "/reports/accounts-payable", icon: "payable" as const, tone: "payable" },
     { label: "Revenue", value: data.month_revenue, note: data.month_revenue === null ? "P&L currently unavailable" : "Month to date · posted journals", href: "/reports/profit-loss", icon: "revenue" as const, tone: "revenue" },
   ] : [];
   const secondaryCards = data ? [
     { label: "Cash on hand", value: money(data.cash_on_hand), note: "Posted ledger" },
-    { label: "Active banks", value: String(data.bank_account_count), note: "Available accounts" },
-    { label: "Open invoices", value: String(data.receivable_count), note: "Awaiting settlement" },
-    { label: "Open bills", value: String(data.payable_count), note: "Awaiting settlement" },
+    { label: "Active bank accounts", value: String(data.bank_account_count), note: "Available accounts" },
   ] : [];
 
   return <div className="live-dashboard">
-    <div className="page-header dashboard-header"><div><h1>{greeting()}</h1><p>Here’s how {organization.name} is doing today in {branch.name}.</p></div><Link className="button" href="/sales/invoices/new">+ New Invoice</Link></div>
+    <div className="page-header dashboard-header"><div><h1>{greeting()}</h1><p>Here’s how {organization.name} is doing today in {branch.name}.</p></div></div>
     {error && <section className="dashboard-surface dashboard-error"><div><h2>Dashboard unavailable</h2><p>{error}</p></div><button className="button secondary" onClick={() => void load()}>Retry</button></section>}
     {!data && !error && <DashboardLoading />}
     {data && <>
@@ -210,7 +208,7 @@ export function LiveDashboard() {
       </section>
       <div className="dashboard-main-grid">
         <div className="dashboard-command-column"><NeedsAttention data={data} /><QuickActions /></div>
-        <div className="dashboard-insight-column"><ActivityPulse activities={data.recent_activity} branchName={branch.name} /><RecentActivity activities={data.recent_activity} branchName={branch.name} /></div>
+        <div className="dashboard-insight-column"><RecentPostedValues activities={data.recent_activity} branchName={branch.name} /><RecentActivity activities={data.recent_activity} branchName={branch.name} /></div>
       </div>
       <CashAndBank data={data} />
     </>}

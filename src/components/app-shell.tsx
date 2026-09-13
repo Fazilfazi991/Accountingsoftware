@@ -173,7 +173,7 @@ export function Sidebar({ groups, route, collapsed, onToggleCollapsed, onNavigat
         {section.label && <p>{section.label}</p>}
         <div>{section.items.map(([name, href]) => (
           <Link className={isActiveRoute(route, href) ? "active" : ""} href={href} key={href} onClick={navigate}>
-            <span>{name}</span><svg aria-hidden="true" viewBox="0 0 16 16"><path d="m6 3 5 5-5 5" /></svg>
+            <span>{name}</span>
           </Link>
         ))}</div>
       </div>
