@@ -148,6 +148,23 @@ export function Sidebar({ groups, route, collapsed, onToggleCollapsed, onNavigat
       if (event.key === "Escape") {
         setOpenGroup(null);
         triggerRefs.current[openGroup]?.focus();
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const focusable = [...(flyoutRef.current?.querySelectorAll<HTMLElement>("a[href], button:not([disabled])") ?? [])]
+        .filter((element) => element.getClientRects().length > 0);
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable.at(-1);
+      if (!flyoutRef.current?.contains(document.activeElement)) {
+        event.preventDefault();
+        (event.shiftKey ? last : first)?.focus();
+      } else if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last?.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
       }
     };
     const onPointerDown = (event: PointerEvent) => {
