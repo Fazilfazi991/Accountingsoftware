@@ -121,6 +121,8 @@
 
 :global(.dashboard-secondary-strip) {
   display: grid;
+  width: min(100%, 580px);
+  justify-self: start;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   overflow: hidden;
   border: 1px solid #e1e7ef;
