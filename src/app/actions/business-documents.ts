@@ -4,28 +4,9 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireOrganizationContext } from "@/lib/organization-context";
 import { createClient } from "@/lib/supabase/server";
+import { documentSchema, documentValidationMessage } from "@/lib/business-document-validation";
 
-const uuid = z.string().uuid(),
-  line = z.object({
-    productId: uuid,
-    description: z.string().trim().min(1).max(300),
-    quantity: z.coerce.number().positive(),
-    unitPrice: z.coerce.number().min(0),
-    discount: z.coerce.number().min(0),
-    taxRateId: uuid.optional(),
-    accountId: uuid,
-    locationId: uuid.optional(),
-  });
-const documentSchema = z.object({
-  id: uuid.optional(),
-  kind: z.enum(["invoice", "bill"]),
-  partyId: uuid,
-  documentDate: z.string().date(),
-  dueDate: z.string().date(),
-  reference: z.string().trim().max(120).optional(),
-  notes: z.string().trim().max(500).optional(),
-  lines: z.array(line).min(1),
-});
+const uuid = z.string().uuid();
 export type BusinessDocumentData = {
   branch: { id: string; name: string };
   customers: any[];
@@ -183,9 +164,15 @@ export async function saveBusinessDocument(
   input: z.infer<typeof documentSchema>,
 ) {
   const parsed = documentSchema.safeParse(input);
-  if (!parsed.success || parsed.data.dueDate < parsed.data.documentDate)
+  if (!parsed.success)
     return {
-      error: "Enter a party, valid dates, and at least one valid line.",
+      error: documentValidationMessage(input?.kind === "bill" ? "bill" : "invoice", parsed.error.issues),
+    };
+  if (parsed.data.dueDate < parsed.data.documentDate)
+    return {
+      error: parsed.data.kind === "bill"
+        ? "Due date must not be before bill date."
+        : "Enter a party, valid dates, and at least one valid line.",
     };
   try {
     const context = await requireOrganizationContext(),

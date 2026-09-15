@@ -390,13 +390,15 @@ export function BusinessDocumentWorkflow({
                   </select>
                 </label>
                 <label>
-                  Account
+                  Account (required)
                   <select
+                    aria-required="true"
                     value={line.accountId}
                     onChange={(e) =>
                       change(index, { accountId: e.target.value })
                     }
                   >
+                    <option value="">Select an account</option>
                     {accounts.map((x) => (
                       <option key={x.id} value={x.id}>
                         {x.name}
