@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { documentSchema, documentValidationMessage } from "./business-document-validation";
+import { assistantActionCommandSchema } from "./assistant/action-registry";
 
 const supplierId = "11111111-1111-4111-8111-111111111111";
 const productId = "22222222-2222-4222-8222-222222222222";
@@ -67,11 +68,32 @@ describe("purchase bill validation messages", () => {
     }
   });
 
-  it("preserves the existing generic invoice message", () => {
+  it("identifies an invalid invoice customer instead of hiding the field error", () => {
     const parsed = documentSchema.safeParse({ ...bill(), kind: "invoice", partyId: "" });
     expect(parsed.success).toBe(false);
     if (!parsed.success) {
-      expect(documentValidationMessage("invoice", parsed.error.issues)).toBe("Enter a party, valid dates, and at least one valid line.");
+      expect(documentValidationMessage("invoice", parsed.error.issues)).toBe("Customer is required or invalid.");
     }
+  });
+
+  it("rejects a discount greater than the line amount", () => {
+    const input = bill();
+    input.lines[0].unitPrice = 20;
+    input.lines[0].discount = 25;
+    expect(errorFor(input)).toContain("Discount cannot exceed the line amount.");
+  });
+
+  it("identifies nested Assistant item errors and standalone line errors inline", () => {
+    const invalidItem = { ...bill().lines[0], quantity: 0 };
+    const standalone = documentSchema.shape.lines.safeParse([invalidItem]);
+    expect(standalone.success).toBe(false);
+    if (!standalone.success) expect(documentValidationMessage("invoice", standalone.error.issues))
+      .toContain("Line 1: Quantity must be greater than zero.");
+    const command = assistantActionCommandSchema.safeParse({ action: "create_invoice_draft", args: {
+      customerId: supplierId, documentDate: "2026-09-15", dueDate: "2026-09-15", items: [invalidItem],
+    } });
+    expect(command.success).toBe(false);
+    if (!command.success) expect(documentValidationMessage("invoice", command.error.issues))
+      .toContain("Line 1: Quantity must be greater than zero.");
   });
 });

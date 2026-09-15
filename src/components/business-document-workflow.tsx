@@ -11,6 +11,7 @@ import {
 } from "@/app/actions/business-documents";
 import { getConversionSources, saveConvertedInvoice } from "@/app/actions/sales-workflow";
 import { dubaiCalendarDate } from "@/lib/dubai-date";
+import { calculateBusinessDocumentTotals } from "@/lib/business-document-totals";
 import {
   newLine,
   productSelectionPatch,
@@ -155,19 +156,7 @@ export function BusinessDocumentWorkflow({
   const oversale =
     kind === "invoice" &&
     lines.some((x) => tracked(x) && x.quantity > available(x));
-  const subtotal = lines.reduce(
-    (s, x) => s + Math.max(0, x.quantity * x.unitPrice - x.discount),
-    0,
-  );
-  const vat = lines.reduce((s, x) => {
-    const rate = data.taxRates.find((r) => r.id === x.taxRateId);
-    return (
-      s +
-      (Math.max(0, x.quantity * x.unitPrice - x.discount) *
-        Number(rate?.rate_percent || 0)) /
-        100
-    );
-  }, 0);
+  const { subtotal, vat, total } = calculateBusinessDocumentTotals(lines, data.taxRates);
   async function save(post: boolean) {
     setBusy(true);
     setError("");
@@ -444,7 +433,7 @@ export function BusinessDocumentWorkflow({
             VAT <b>{money(vat)}</b>
           </span>
           <strong>
-            Total <b>{money(subtotal + vat)}</b>
+            Total <b>{money(total)}</b>
           </strong>
         </div>
         <div className="form-actions">

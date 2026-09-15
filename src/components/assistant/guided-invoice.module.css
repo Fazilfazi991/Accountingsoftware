@@ -1,0 +1,39 @@
+.flow{max-width:860px;margin:0 auto;color:#183126;padding:4px 0 40px}
+.flow h2{font-size:27px;letter-spacing:-.03em;margin:0 0 5px}.flow h3{font-size:20px;letter-spacing:-.02em;margin:0 0 5px}
+.flow p{color:#60736a;line-height:1.5;margin:0 0 16px}.top{display:flex;justify-content:space-between;align-items:start;gap:18px;margin-bottom:18px}
+.top p{margin:0}.progress{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;list-style:none;padding:0;margin:0 0 13px}
+.progress li{display:flex;align-items:center;gap:8px;padding:9px 11px;background:#f2f6f2;border-radius:10px;font-size:12px;font-weight:700;color:#708178;min-width:0}
+.progress li span{display:grid;place-items:center;width:23px;height:23px;min-width:23px;border:1px solid #cbd9cd;border-radius:50%;font-size:11px}
+.progress .current{background:#e8f3eb;color:#194d34}.progress .current span{background:#195136;border-color:#195136;color:#fff}
+.progress .complete{color:#37694e}.progress .complete span{border-color:#83b594}
+.branch{font-size:12px;color:#63766c;margin-bottom:18px}.branch strong{color:#2f4b38}
+.panel{background:#fff;border:1px solid #dce8df;border-radius:16px;padding:22px}.panel>p{max-width:66ch}.panel h3+p{margin-bottom:18px}
+.field{display:flex;flex-direction:column;gap:6px;font-size:12px;font-weight:700;color:#365447;min-width:0}
+.field input,.field select,.field textarea{font:inherit;font-size:14px;font-weight:400;color:#183126;background:#fff;border:1px solid #cadacf;border-radius:9px;padding:10px 11px;min-height:44px;width:100%;min-width:0;outline-color:#26754d}
+.field input[readonly]{background:#f4f7f3;color:#596e5f}.field textarea{resize:vertical}
+.fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}.wide{grid-column:1/-1}
+.customerList{max-height:205px;overflow-y:auto;border:1px solid #dce7df;border-radius:10px;margin:12px 0;padding:4px}
+.customerList button{display:block;width:100%;text-align:left;border:0;border-radius:7px;background:#fff;color:#264636;padding:9px 11px;min-height:44px;cursor:pointer;font:inherit;font-size:14px}
+.customerList button:hover,.customerList button:focus-visible,.customerList button[aria-pressed=true]{background:#e9f4ec}
+.customerList p{padding:12px;margin:0}.selected{display:flex;align-items:center;gap:9px;flex-wrap:wrap;background:#edf5ef;border-radius:9px;padding:10px;margin-top:12px}
+.selected span{font-size:11px;color:#607b69}.selected strong{font-size:14px}.textButton{border:0;background:none;color:#286b45;padding:9px;min-height:44px;cursor:pointer;font:inherit;font-weight:700;font-size:13px}
+.selected .textButton{margin-left:auto}.hint{font-size:12px!important;color:#62766b!important;line-height:1.5!important;margin:13px 0!important}.hint a{color:#286b45;text-underline-offset:3px}
+.line{background:#f8faf7;border:1px solid #e5ece5;border-radius:12px;padding:16px;margin:14px 0}
+.lineTop{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}.lineTop strong{font-size:14px}.lineTop .textButton{min-height:32px;padding:4px 8px}
+.add{background:#fff;border:1px dashed #85ad91;border-radius:9px;color:#286b45;font:inherit;font-weight:700;font-size:13px;min-height:44px;padding:9px 14px;cursor:pointer}
+.actions{display:flex;justify-content:flex-end;align-items:center;gap:9px;flex-wrap:wrap;margin-top:22px}
+.primary,.secondary{display:inline-flex;align-items:center;justify-content:center;min-height:44px;border-radius:9px;padding:10px 16px;font:inherit;font-size:13px;font-weight:700;text-decoration:none;cursor:pointer}
+.primary{background:#184d35;color:#fff;border:1px solid #184d35}.primary:hover,.primary:focus-visible{background:#236344}
+.secondary{background:#fff;color:#295d3e;border:1px solid #bcd6c3}.secondary:hover,.secondary:focus-visible{background:#f1f8f2}
+.primary:disabled,.secondary:disabled{opacity:.55;cursor:not-allowed}.error{background:#fff2eb;color:#9a3b1e!important;border-radius:9px;padding:10px 12px;margin:14px 0!important;font-size:13px}
+.optional{border-top:1px solid #e4ece5;margin-top:18px;padding-top:14px}.optional summary{color:#286b45;font-weight:700;cursor:pointer;min-height:44px;padding:11px 0}.optional .field{margin:10px 0}
+.previewHead{display:flex;align-items:start;justify-content:space-between;gap:16px}.previewHead span{border-radius:99px;background:#edf5ef;color:#256247;padding:7px 10px;font-size:11px;font-weight:700;white-space:nowrap}
+.summary,.totals{margin:13px 0 0}.summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;border-top:1px solid #e3ebe3;padding-top:15px}
+.summary div,.totals div{min-width:0}.summary dt,.totals dt{font-size:12px;color:#64776a}.summary dd,.totals dd{margin:4px 0 0;font-weight:700;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.previewLines{border-top:1px solid #e3ebe3;margin-top:17px}.previewLines>div{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid #e3ebe3;padding:12px 0}
+.previewLines strong,.previewLines small{display:block}.previewLines strong{font-size:14px;overflow-wrap:anywhere}.previewLines small{font-size:12px;color:#607468;margin-top:4px}.previewLines b{font-size:14px;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.totals{max-width:330px;margin-left:auto}.totals div{display:flex;justify-content:space-between;gap:16px;padding:5px 0}.totals dd{margin:0;text-align:right;font-size:14px;white-space:nowrap}
+.totals .grand{border-top:1px solid #cadcca;margin-top:7px;padding-top:10px}.grand dt,.grand dd{color:#194a32;font-size:16px;font-weight:800}
+.success{background:#f9fcf9}.success h3{color:#205737}
+@media(max-width:650px){.flow{padding-bottom:24px}.flow h2{font-size:23px}.flow h3{font-size:18px}.panel{padding:16px}.progress{gap:4px}.progress li{display:block;text-align:center;padding:7px 3px;font-size:10px}.progress li span{margin:0 auto 4px}.fields{gap:11px}.previewHead{display:block}.previewHead span{display:inline-block;margin:0 0 12px}.actions{justify-content:stretch}.actions>*{flex:1 1 42%}.actions .primary{flex:1 1 100%}.summary{gap:10px}.previewLines>div{flex-wrap:wrap}.previewLines b{text-align:left}.totals{max-width:none}}
+@media(max-width:390px){.progress li{font-size:9px}.panel{padding:14px}.actions>*{flex:1 1 100%}}

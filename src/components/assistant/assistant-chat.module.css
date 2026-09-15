@@ -21,3 +21,17 @@
 @media(max-width:650px){.embedded .workspace{height:calc(100dvh - 64px);min-height:0}}
 @media(max-width:650px){.identity{display:none}.mobileIdentity{display:block;font-size:11px;color:#64766a;margin-top:7px}}
 @media(max-width:390px){.facts{grid-template-columns:1fr 1fr}.identity{display:none}.composer{grid-template-columns:1fr}.composer>button{min-height:44px}}
+
+/* The command-center start screen inherits Ledgerly's quiet green product language. */
+.header{padding:18px clamp(20px,4vw,48px)}.header h1{font-size:30px;letter-spacing:-.03em;margin:0 0 4px}
+.conversation{padding:24px clamp(20px,4vw,48px)}
+.welcome,.exchange{max-width:780px}.welcome{padding:8px 0 26px}.welcome h2{font-size:27px;letter-spacing:-.03em;margin:13px 0 5px}.welcome p{line-height:1.5;max-width:650px;margin:0}
+.startGroup{margin-top:25px}.groupHeading{display:flex;align-items:baseline;justify-content:space-between;gap:14px;margin-bottom:9px}.groupHeading h3{font-size:15px;letter-spacing:-.01em;margin:0}.groupHeading span{font-size:11px;color:#718276}
+.prompts,.createGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:0}
+.prompts button,.createGrid button{min-height:48px;border:1px solid #dce7de;background:#fff;border-radius:10px;text-align:left;padding:10px 12px;font-weight:650;display:flex;justify-content:space-between;align-items:center;gap:10px;color:#243a2e;cursor:pointer;font:inherit;font-size:13px}
+.prompts button:hover,.prompts button:focus-visible,.createGrid button:not(:disabled):hover,.createGrid button:not(:disabled):focus-visible{border-color:#3b8a61;background:#f5faf5}
+.createGrid button{display:block}.createGrid strong,.createGrid small{display:block}.createGrid small{font-size:10px;color:#67806c;margin-top:3px}.createGrid button:not(:disabled){background:#eaf4ec;border-color:#b5d8bd}.createGrid button:disabled{background:#f7f9f6;color:#718276;cursor:not-allowed}.createGrid button:disabled small{color:#89998d}
+.loading,.error,.notice{max-width:780px}.notice{margin:0 auto;padding:16px;border-radius:12px;background:#f7f8f3;color:#526d5b}
+.composerAction{margin-left:13px;border:0;background:transparent;color:#236c43;text-decoration:underline;text-underline-offset:3px;font:inherit;font-weight:700;cursor:pointer}
+.actionFooter{padding:14px clamp(20px,4vw,48px);border-top:1px solid #e1eae3;background:#fff;color:#62766b;font-size:12px}
+@media(max-width:650px){.header{padding:13px 19px}.header h1{font-size:24px}.conversation{padding:17px 16px}.prompts,.createGrid{grid-template-columns:repeat(2,minmax(0,1fr))}.welcome{padding:8px 0 20px}.welcome h2{font-size:23px}}

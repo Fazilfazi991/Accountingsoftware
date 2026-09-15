@@ -172,7 +172,7 @@ export async function saveBusinessDocument(
     return {
       error: parsed.data.kind === "bill"
         ? "Due date must not be before bill date."
-        : "Enter a party, valid dates, and at least one valid line.",
+        : "Due date must not be before invoice date.",
     };
   try {
     const context = await requireOrganizationContext(),

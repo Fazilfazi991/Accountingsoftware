@@ -1,5 +1,7 @@
 import type { BusinessDocumentData } from "@/app/actions/business-documents";
 
+type BusinessDocumentChoices = Pick<BusinessDocumentData, "products" | "accounts" | "locations">;
+
 export type BusinessDocumentKind = "invoice" | "bill";
 
 export type BusinessDocumentLine = {
@@ -18,7 +20,7 @@ export type BusinessDocumentLine = {
   sourceDiscountPerUnit?: number;
 };
 
-function defaultAccount(data: BusinessDocumentData, kind: BusinessDocumentKind) {
+function defaultAccount(data: BusinessDocumentChoices, kind: BusinessDocumentKind) {
   if (kind === "bill") return "";
   return (
     data.accounts.find((x) => x.system_key === "sales_revenue")?.id ||
@@ -29,13 +31,13 @@ function defaultAccount(data: BusinessDocumentData, kind: BusinessDocumentKind) 
 
 export function savedLineAccount(
   savedAccountId: string | null | undefined,
-  data: BusinessDocumentData,
+  data: BusinessDocumentChoices,
   kind: BusinessDocumentKind,
 ) {
   return savedAccountId || defaultAccount(data, kind);
 }
 
-export function newLine(data: BusinessDocumentData, kind: BusinessDocumentKind): BusinessDocumentLine {
+export function newLine(data: BusinessDocumentChoices, kind: BusinessDocumentKind): BusinessDocumentLine {
   const p = data.products[0],
     tracked = p?.kind === "product" && p.track_inventory;
   return {
@@ -56,7 +58,7 @@ export function newLine(data: BusinessDocumentData, kind: BusinessDocumentKind):
 }
 
 export function productSelectionPatch(
-  data: BusinessDocumentData,
+  data: BusinessDocumentChoices,
   kind: BusinessDocumentKind,
   productId: string,
 ): Partial<BusinessDocumentLine> {
