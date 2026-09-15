@@ -16,7 +16,7 @@ describe("guided invoice state", () => {
     expect(state.stage).toBe("success");
     expect(reduce(state, { type: "confirm" })).toEqual(state);
   });
-  it("cancels without a saved record and treats an ambiguous save as non-retryable", () => {
+  it("cancels without a saved record and permits same-key retry after an ambiguous save", () => {
     let state = reduce(emptyInvoiceState, { type: "begin", today: "2026-09-15", requestId: "request-b" });
     state = reduce(state, { type: "customer", id: "customer-a" });
     expect(reduce(state, { type: "cancel" })).toEqual(emptyInvoiceState);
@@ -24,7 +24,8 @@ describe("guided invoice state", () => {
     state = reduce(state, { type: "confirm" });
     state = reduce(state, { type: "uncertain", error: "Check invoices" });
     expect(state.stage).toBe("uncertain");
-    expect(reduce(state, { type: "confirm" })).toEqual(state);
+    const retry = reduce(state, { type: "confirm" });
+    expect(retry).toMatchObject({ stage: "saving", requestId: "request-b" });
   });
   it("starts with the first line atomically when choices have loaded", () => {
     const line = { productId: "", description: "", quantity: 1, unitPrice: 0,
@@ -45,13 +46,13 @@ describe("guided invoice state", () => {
     expect(state).toMatchObject({ stage: "success", recovered: true, savedId: "draft-a", savedNumber: "QA reference" });
     expect(reduce(state, { type: "confirm" })).toEqual(state);
   });
-  it("keeps an unknown recovery fail-closed and clears pending state on cancellation", () => {
+  it("retains the request key when an uncertain result is retried", () => {
     let state = reduce(emptyInvoiceState, { type: "begin", today: "2026-09-15", requestId: "pending-two" });
     state = reduce({ ...state, stage: "preview" }, { type: "confirm" });
     state = reduce(state, { type: "checking" });
     state = reduce(state, { type: "uncertain", error: "Check invoices before retrying" });
     expect(state.stage).toBe("uncertain");
-    expect(reduce(state, { type: "confirm" })).toEqual(state);
+    expect(reduce(state, { type: "confirm" })).toMatchObject({ stage: "saving", requestId: "pending-two" });
     expect(reduce(state, { type: "cancel" })).toEqual(emptyInvoiceState);
   });
 });

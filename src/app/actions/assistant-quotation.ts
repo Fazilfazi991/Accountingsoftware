@@ -2,9 +2,11 @@
 
 import { requireOrganizationContext } from "@/lib/organization-context";
 import { createClient } from "@/lib/supabase/server";
-import { getSalesWorkflowData, saveOperationalDocument, type SalesWorkflowData } from "./sales-workflow";
+import { getSalesWorkflowData, type SalesWorkflowData } from "./sales-workflow";
 import { quotationActionCommandSchema, type QuotationActionArgs } from "@/lib/assistant/action-registry";
 import { quotationValidationMessage } from "@/lib/sales-workflow-validation";
+import { requestKeySchema, assistantWriteError } from "@/lib/assistant/write-request";
+import { revalidatePath } from "next/cache";
 
 export type AssistantQuotationData = Pick<SalesWorkflowData,
   "customers" | "products" | "accounts" | "taxRates"> & { branch: { id: string; name: string } };
@@ -39,33 +41,43 @@ function quotationScopeError(args: QuotationActionArgs, data: AssistantQuotation
   return null;
 }
 
-export async function saveAssistantQuotation(command: unknown, expectedBranchId: string): Promise<
+export async function saveAssistantQuotation(command: unknown, expectedBranchId: string, requestKey: string): Promise<
   { id: string; number: string; status: string } | { error: string; safeToRetry: boolean }
 > {
   const parsed = quotationActionCommandSchema.safeParse(command);
   if (!parsed.success) return { error: quotationValidationMessage(parsed.error.issues), safeToRetry: true };
+  if (!requestKeySchema.safeParse(requestKey).success) return { error: "Invalid write request ID. Start this action again.", safeToRetry: false };
   const args = parsed.data.args;
   if (args.expiry < args.date) return { error: "Valid-until date must not be before quotation date.", safeToRetry: true };
   if (!(await canCreateAssistantQuotation())) return { error: "You do not have permission to create quotations.", safeToRetry: true };
   const context = await requireOrganizationContext();
   if (context.branch.id !== expectedBranchId)
     return { error: "The selected branch changed. Return to Assistant and start again.", safeToRetry: true };
+  const client = await createClient();
+  const params = { p_org: context.organization.id, p_branch: context.branch.id,
+    p_action: "create_quotation_draft", p_request_key: requestKey, p_payload: args };
+  const { data: prior, error: lookupError } = await client.rpc("lookup_assistant_write", params);
+  if (lookupError) return { error: assistantWriteError(lookupError.message),
+    safeToRetry: !lookupError.message.includes("assistant_write_payload_mismatch") &&
+      !lookupError.message.includes("assistant_write_scope_mismatch") };
+  if (prior) {
+    if (!requestKeySchema.safeParse(prior.id).success || typeof prior.number !== "string")
+      return { error: "The prior quotation result could not be confirmed.", safeToRetry: true };
+    return { id: prior.id, number: prior.number, status: prior.status };
+  }
   const choices = await getAssistantQuotationData();
   if ("error" in choices) return { error: choices.error, safeToRetry: true };
   if (choices.branch.id !== expectedBranchId)
     return { error: "The selected branch changed. Return to Assistant and start again.", safeToRetry: true };
   const scopedError = quotationScopeError(args, choices);
   if (scopedError) return { error: scopedError, safeToRetry: true };
-  // No id, allocations, status, or organization override is accepted from the action command.
-  const saved = await saveOperationalDocument({ kind: "quotation", customerId: args.customerId,
-    date: args.date, expiry: args.expiry, reference: args.reference, notes: args.notes,
-    lines: args.lines, allocations: [] });
-  if ("error" in saved) return { error: saved.error || "Quotation result could not be confirmed.", safeToRetry: false };
-  const client = await createClient();
-  const { data, error } = await client.from("sales_quotations")
-    .select("id,quotation_number,status")
-    .eq("id", saved.id).eq("organization_id", context.organization.id)
-    .eq("branch_id", expectedBranchId).eq("customer_id", args.customerId).maybeSingle();
-  if (error || !data) return { error: "Quotation was saved but its result could not be read. Check Quotations before trying again.", safeToRetry: false };
-  return { id: data.id, number: data.quotation_number, status: data.status };
+  // The transaction wrapper invokes save_operational_document, the same RPC as the normal form.
+  const { data, error } = await client.rpc("execute_assistant_write", params);
+  if (error) return { error: assistantWriteError(error.message),
+    safeToRetry: !error.message.includes("assistant_write_payload_mismatch") &&
+      !error.message.includes("assistant_write_scope_mismatch") };
+  if (!requestKeySchema.safeParse(data?.id).success || typeof data?.number !== "string")
+    return { error: "The quotation result could not be confirmed. Retry with the same request ID.", safeToRetry: true };
+  revalidatePath("/", "layout");
+  return { id: data.id, number: data.number, status: data.status };
 }

@@ -6,6 +6,7 @@ import { getAssistantCustomerData, saveAssistantCustomer, type AssistantCustomer
 import { customerActionCommandSchema, type ActionId } from "@/lib/assistant/action-registry";
 import { customerValidationMessage } from "@/lib/party-validation";
 import { likelyCustomerDuplicates, type CustomerDuplicate } from "@/lib/assistant/customer-duplicates";
+import { acquireAssistantRequestKey, clearAssistantRequestKey, rotateAssistantRequestKey } from "@/lib/assistant/client-request-key";
 import { ActionSwitcher } from "./action-switcher";
 import styles from "./guided-invoice.module.css";
 
@@ -21,11 +22,12 @@ export function GuidedCustomer({ onClose, onSwitch, allowed, returnTo }: {
   const [stage, setStage] = useState<Stage>("form"), [fields, setFields] = useState<Fields>(blank());
   const [error, setError] = useState(""), [duplicates, setDuplicates] = useState<CustomerDuplicate[]>([]);
   const [saved, setSaved] = useState<{ id: string; name: string; email: string; phone: string; trn: string } | null>(null);
-  const loaded = useRef(false), saving = useRef(false);
+  const loaded = useRef(false), saving = useRef(false), requestKey = useRef("");
   useEffect(() => {
     if (loaded.current) return; loaded.current = true;
     void getAssistantCustomerData().then((result) => {
       if ("error" in result) { setLoadError(result.error); return; } setData(result);
+      requestKey.current = acquireAssistantRequestKey("create_customer", result.branch.id);
     }).catch(() => setLoadError("Customer choices could not be loaded. Return to Assistant and try again."));
   }, []);
   const command = () => ({ action: "create_customer" as const, args: fields });
@@ -38,30 +40,33 @@ export function GuidedCustomer({ onClose, onSwitch, allowed, returnTo }: {
     setError(""); setStage("preview");
   }
   async function confirm(continueAnyway = false) {
-    if (saving.current || !data || !["preview", "duplicate"].includes(stage)) return;
+    if (saving.current || !data || !["preview", "duplicate", "uncertain"].includes(stage)) return;
     const checked = customerActionCommandSchema.safeParse(command());
     if (!checked.success) { setError(customerValidationMessage(checked.error.issues)); setStage("form"); return; }
     saving.current = true; setError(""); setStage("saving");
     try {
-      const result = await saveAssistantCustomer(checked.data, data.branch.id, continueAnyway);
+      const result = await saveAssistantCustomer(checked.data, data.branch.id, continueAnyway, requestKey.current);
       if ("duplicateWarning" in result) {
         setDuplicates(result.duplicateWarning); saving.current = false; setStage("duplicate"); return;
       }
       if ("error" in result) {
         if (result.safeToRetry) { saving.current = false; setStage("preview"); setError(result.error); }
-        else { setStage("uncertain"); setError("We couldn't confirm the customer result. Check Customers before trying again."); }
+        else { saving.current = false; setStage("uncertain"); setError(result.error); }
         return;
       }
       setSaved(result); setStage("success");
-    } catch { setStage("uncertain"); setError("We couldn't confirm the customer result. Check Customers before trying again."); }
+    } catch { saving.current = false; setStage("uncertain");
+      setError("The create response was lost. Retry with this same request ID; it cannot create another customer."); }
   }
-  function another() { saving.current = false; setStage("form"); setFields(blank()); setError(""); setDuplicates([]); setSaved(null); }
+  function another() { if (data) requestKey.current = rotateAssistantRequestKey("create_customer", data.branch.id);
+    saving.current = false; setStage("form"); setFields(blank()); setError(""); setDuplicates([]); setSaved(null); }
+  function close() { if (data && stage !== "uncertain") clearAssistantRequestKey("create_customer", data.branch.id); onClose(); }
   if (loadError) return <section className={styles.flow}><h2>Add Customer</h2><p role="alert" className={styles.error}>{loadError}</p>
-    <button type="button" className={styles.secondary} onClick={onClose}>Back to Assistant</button></section>;
+    <button type="button" className={styles.secondary} onClick={close}>Back to Assistant</button></section>;
   if (!data) return <section className={styles.flow} role="status"><h2>Add Customer</h2><p>Checking existing customers…</p></section>;
   return <section className={styles.flow} aria-label="Guided customer creation">
     <div className={styles.top}><div><h2>Add Customer</h2><p>Add a customer using Ledgerly&apos;s existing customer form rules.</p></div>
-      {!["saving", "uncertain"].includes(stage) && <button type="button" className={styles.textButton} onClick={onClose}>
+      {!["saving", "uncertain"].includes(stage) && <button type="button" className={styles.textButton} onClick={close}>
         {stage === "success" ? "Back to Assistant" : "Cancel"}</button>}</div>
     <div className={styles.branch}>Current branch: <strong>{data.branch.name}</strong> · Saved in your current company.</div>
     {stage === "form" && <div className={styles.panel}><h3>Customer details</h3>
@@ -121,11 +126,15 @@ export function GuidedCustomer({ onClose, onSwitch, allowed, returnTo }: {
         <button type="button" className={styles.secondary} disabled={!allowed.create_quotation_draft}
           onClick={() => onSwitch("create_quotation_draft", false, saved.id)}>Create Quotation for this Customer</button>
         <button type="button" className={styles.secondary} onClick={another}>Add Another</button>
-        <button type="button" className={styles.secondary} onClick={onClose}>Back to Assistant</button></div></div>}
+        <button type="button" className={styles.secondary} onClick={close}>Back to Assistant</button></div></div>}
     {stage === "uncertain" && <div className={styles.panel} role="alert"><h3>Creation result needs checking</h3>
-      <p className={styles.error}>{error}</p><p>No second create will be attempted from this screen.</p>
-      <div className={styles.actions}><Link className={styles.primary} href="/sales/customers">Check Customers</Link>
-        <button type="button" className={styles.secondary} onClick={onClose}>Back to Assistant</button></div></div>}
+      <p className={styles.error}>{error}</p>
+      {!error.includes("Start a new action") && !error.includes("Start this action again") &&
+        <p>Retry uses the same request ID and will return the original customer if it was created.</p>}
+      <div className={styles.actions}>{!error.includes("Start a new action") && !error.includes("Start this action again") &&
+        <button type="button" className={styles.primary} onClick={() => void confirm(true)}>Retry safely</button>}
+        <Link className={styles.secondary} href="/sales/customers">Check Customers</Link>
+        <button type="button" className={styles.secondary} onClick={close}>Back to Assistant</button></div></div>}
     {stage !== "uncertain" && <ActionSwitcher current="create_customer" allowed={allowed} disabled={stage === "saving"}
       onRequest={(target) => onSwitch(target, stage !== "success")} />}
   </section>;

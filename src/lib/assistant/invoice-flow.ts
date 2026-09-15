@@ -54,7 +54,7 @@ export function guidedInvoiceReducer(state: GuidedInvoiceState, event: InvoiceEv
     }
     case "edit": return ["customer", "items", "details", "preview"].includes(state.stage)
       ? { ...state, stage: event.stage, error: "" } : state;
-    case "confirm": return state.stage === "preview" ? { ...state, stage: "saving", error: "" } : state;
+    case "confirm": return ["preview", "uncertain"].includes(state.stage) ? { ...state, stage: "saving", error: "" } : state;
     case "saved": return state.stage === "saving" ? { ...state, stage: "success", savedId: event.id,
       savedNumber: event.number, error: "" } : state;
     case "checking": return state.stage === "saving" ? { ...state, stage: "checking" } : state;

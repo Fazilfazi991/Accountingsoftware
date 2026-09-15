@@ -7,6 +7,7 @@ import { quotationActionCommandSchema, type ActionId } from "@/lib/assistant/act
 import { quotationValidationMessage } from "@/lib/sales-workflow-validation";
 import { calculateOperationalTotals } from "@/lib/sales-workflow-totals";
 import { dubaiCalendarDate } from "@/lib/dubai-date";
+import { acquireAssistantRequestKey, clearAssistantRequestKey, rotateAssistantRequestKey } from "@/lib/assistant/client-request-key";
 import { CustomerSelector } from "./customer-selector";
 import { ActionSwitcher } from "./action-switcher";
 import styles from "./guided-invoice.module.css";
@@ -29,13 +30,14 @@ export function GuidedQuotation({ onClose, onSwitch, allowed, initialCustomerId 
     [expiry, setExpiry] = useState(dubaiCalendarDate()), [reference, setReference] = useState(""),
     [notes, setNotes] = useState(""), [error, setError] = useState("");
   const [saved, setSaved] = useState<{ id: string; number: string; status: string } | null>(null);
-  const loaded = useRef(false), saving = useRef(false);
+  const loaded = useRef(false), saving = useRef(false), requestKey = useRef("");
   useEffect(() => {
     if (loaded.current) return;
     loaded.current = true;
     void getAssistantQuotationData().then((result) => {
       if ("error" in result) { setLoadError(result.error); return; }
       setData(result);
+      requestKey.current = acquireAssistantRequestKey("create_quotation_draft", result.branch.id);
       if (result.customers.some((item) => item.id === initialCustomerId)) setCustomer(initialCustomerId || "");
     }).catch(() => setLoadError("Quotation choices could not be loaded. Return to Assistant and try again."));
   }, [initialCustomerId]);
@@ -65,32 +67,35 @@ export function GuidedQuotation({ onClose, onSwitch, allowed, initialCustomerId 
     setLines((current) => current.map((line, i) => i === index ? { ...line, ...patch } : line)); setError("");
   }
   async function confirm() {
-    if (saving.current || stage !== "preview" || !data) return;
+    if (saving.current || !["preview", "uncertain"].includes(stage) || !data) return;
     const checked = quotationActionCommandSchema.safeParse(command());
     if (!checked.success) { setError(quotationValidationMessage(checked.error.issues)); return; }
     if (expiry < date) { setError("Valid-until date must not be before quotation date."); return; }
     saving.current = true; setStage("saving"); setError("");
     try {
-      const result = await saveAssistantQuotation(checked.data, data.branch.id);
+      const result = await saveAssistantQuotation(checked.data, data.branch.id, requestKey.current);
       if ("error" in result) {
         if (result.safeToRetry) { saving.current = false; setStage("preview"); setError(result.error); }
-        else { setStage("uncertain"); setError("We couldn't confirm the quotation result. Check Quotations before trying again."); }
+        else { saving.current = false; setStage("uncertain"); setError(result.error); }
         return;
       }
       setSaved(result); setStage("success");
-    } catch { setStage("uncertain"); setError("We couldn't confirm the quotation result. Check Quotations before trying again."); }
+    } catch { saving.current = false; setStage("uncertain");
+      setError("The save response was lost. Retry with this same request ID; it cannot create another quotation."); }
   }
   function another() {
+    if (data) requestKey.current = rotateAssistantRequestKey("create_quotation_draft", data.branch.id);
     saving.current = false; setSaved(null); setStage("customer"); setCustomer(""); setLines([fresh()]);
     setDate(dubaiCalendarDate()); setExpiry(dubaiCalendarDate()); setReference(""); setNotes(""); setError("");
   }
+  function close() { if (data && stage !== "uncertain") clearAssistantRequestKey("create_quotation_draft", data.branch.id); onClose(); }
   if (loadError) return <section className={styles.flow}><h2>Create Quotation</h2><p role="alert" className={styles.error}>{loadError}</p>
-    <button type="button" className={styles.secondary} onClick={onClose}>Back to Assistant</button></section>;
+    <button type="button" className={styles.secondary} onClick={close}>Back to Assistant</button></section>;
   if (!data) return <section className={styles.flow} role="status"><h2>Create Quotation</h2>
     <p>Loading active customers, products, accounts and sales tax rates…</p></section>;
   return <section className={styles.flow} aria-label="Guided quotation creation">
     <div className={styles.top}><div><h2>Create Quotation</h2><p>Prepare a quotation using Ledgerly&apos;s existing sales workflow.</p></div>
-      {!["saving", "uncertain"].includes(stage) && <button type="button" className={styles.textButton} onClick={onClose}>
+      {!["saving", "uncertain"].includes(stage) && <button type="button" className={styles.textButton} onClick={close}>
         {stage === "success" ? "Back to Assistant" : "Cancel"}</button>}</div>
     {!["success", "uncertain"].includes(stage) && <ol className={styles.progress} aria-label="Quotation steps">
       {steps.map((step, index) => <li key={step} className={step.toLowerCase() === stage ? styles.current :
@@ -184,11 +189,15 @@ export function GuidedQuotation({ onClose, onSwitch, allowed, initialCustomerId 
         <div><dt>Status</dt><dd>{saved.status} · not posted</dd></div></dl>
       <div className={styles.actions}><Link className={styles.primary} href={`/documents/quotation/${saved.id}`}>Open Quotation</Link>
         <button type="button" className={styles.secondary} onClick={another}>Create Another</button>
-        <button type="button" className={styles.secondary} onClick={onClose}>Back to Assistant</button></div></div>}
+        <button type="button" className={styles.secondary} onClick={close}>Back to Assistant</button></div></div>}
     {stage === "uncertain" && <div className={styles.panel} role="alert"><h3>Save result needs checking</h3>
-      <p className={styles.error}>{error}</p><p>No second save will be attempted from this screen.</p>
-      <div className={styles.actions}><Link className={styles.primary} href="/sales/quotations">Check Quotations</Link>
-        <button type="button" className={styles.secondary} onClick={onClose}>Back to Assistant</button></div></div>}
+      <p className={styles.error}>{error}</p>
+      {!error.includes("Start a new action") && !error.includes("Start this action again") &&
+        <p>Retry uses the same request ID and will return the original quotation if it was created.</p>}
+      <div className={styles.actions}>{!error.includes("Start a new action") && !error.includes("Start this action again") &&
+        <button type="button" className={styles.primary} onClick={() => void confirm()}>Retry safely</button>}
+        <Link className={styles.secondary} href="/sales/quotations">Check Quotations</Link>
+        <button type="button" className={styles.secondary} onClick={close}>Back to Assistant</button></div></div>}
     {stage !== "uncertain" && <ActionSwitcher current="create_quotation_draft" allowed={allowed}
       disabled={stage === "saving"} onRequest={(target) => onSwitch(target, stage !== "success")} />}
   </section>;

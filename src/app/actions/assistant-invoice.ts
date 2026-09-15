@@ -2,11 +2,11 @@
 
 import { requireOrganizationContext } from "@/lib/organization-context";
 import { createClient } from "@/lib/supabase/server";
-import { getBusinessDocumentData, saveBusinessDocument, type BusinessDocumentData } from "./business-documents";
+import { getBusinessDocumentData, type BusinessDocumentData } from "./business-documents";
 import { validateAssistantActionCommand, type InvoiceActionArgs } from "@/lib/assistant/action-registry";
 import { documentValidationMessage } from "@/lib/business-document-validation";
-import { matchingRecentInvoiceDrafts } from "@/lib/assistant/invoice-recovery";
-import { z } from "zod";
+import { requestKeySchema, assistantWriteError } from "@/lib/assistant/write-request";
+import { revalidatePath } from "next/cache";
 
 export type AssistantInvoiceData = Pick<BusinessDocumentData,
   "branch" | "customers" | "products" | "locations" | "accounts" | "taxRates" | "summary">;
@@ -49,11 +49,12 @@ function scopedReferenceError(args: InvoiceActionArgs, data: AssistantInvoiceDat
   return null;
 }
 
-export async function saveAssistantInvoiceDraft(command: unknown, expectedBranchId: string): Promise<
+export async function saveAssistantInvoiceDraft(command: unknown, expectedBranchId: string, requestKey: string): Promise<
   { id: string; label: string; status: "draft" } | { error: string; safeToRetry: boolean }
 > {
   const parsed = validateAssistantActionCommand(command);
   if (!parsed.success) return { error: documentValidationMessage("invoice", parsed.error.issues), safeToRetry: true };
+  if (!requestKeySchema.safeParse(requestKey).success) return { error: "Invalid write request ID. Start this action again.", safeToRetry: false };
   const args = parsed.data.args;
   if (args.dueDate < args.documentDate) return { error: "Due date must not be before invoice date.", safeToRetry: true };
   if (!(await canCreateAssistantInvoice())) return { error: "You do not have permission to create sales invoices.", safeToRetry: true };
@@ -61,50 +62,31 @@ export async function saveAssistantInvoiceDraft(command: unknown, expectedBranch
   const current = await requireOrganizationContext();
   if (current.branch.id !== expectedBranchId)
     return { error: "The selected branch changed. Return to Assistant and start this draft again.", safeToRetry: true };
+  const client = await createClient();
+  const params = { p_org: current.organization.id, p_branch: current.branch.id,
+    p_action: "create_invoice_draft", p_request_key: requestKey, p_payload: args };
+  const { data: prior, error: lookupError } = await client.rpc("lookup_assistant_write", params);
+  if (lookupError) return { error: assistantWriteError(lookupError.message),
+    safeToRetry: !lookupError.message.includes("assistant_write_payload_mismatch") &&
+      !lookupError.message.includes("assistant_write_scope_mismatch") };
+  if (prior) {
+    const id = String(prior.id || "");
+    if (!requestKeySchema.safeParse(id).success) return { error: "The prior draft result could not be confirmed.", safeToRetry: true };
+    return { id, label: args.reference?.trim() || `Draft ${id.slice(0, 8)}`, status: "draft" };
+  }
   const data = await getAssistantInvoiceData();
   if ("error" in data) return { error: data.error, safeToRetry: true };
   if (data.branch.id !== expectedBranchId)
     return { error: "The selected branch changed. Return to Assistant and start this draft again.", safeToRetry: true };
   const scopedError = scopedReferenceError(args, data);
   if (scopedError) return { error: scopedError, safeToRetry: true };
-  const result = await saveBusinessDocument({
-    kind: "invoice", partyId: args.customerId, documentDate: args.documentDate, dueDate: args.dueDate,
-    reference: args.reference, notes: args.notes,
-    lines: args.items.map((line) => ({ ...line, taxRateId: line.taxRateId || undefined,
-      locationId: line.locationId || undefined })),
-  });
-  if ("error" in result) return { error: result.error || "The invoice draft could not be saved.", safeToRetry: false };
+  const { data: result, error } = await client.rpc("execute_assistant_write", params);
+  if (error) return { error: assistantWriteError(error.message),
+    safeToRetry: !error.message.includes("assistant_write_payload_mismatch") &&
+      !error.message.includes("assistant_write_scope_mismatch") };
+  const id = String(result?.id || "");
+  if (!requestKeySchema.safeParse(id).success) return { error: "The draft result could not be confirmed. Retry with the same request ID.", safeToRetry: true };
+  revalidatePath("/", "layout");
   // The Sales Invoice domain only assigns invoice_number on posting. Never claim a draft was numbered.
-  return { id: result.id, label: args.reference?.trim() || `Draft ${result.id.slice(0, 8)}`, status: "draft" };
-}
-
-export async function recoverAssistantInvoiceDraft(command: unknown, expectedBranchId: string,
-  sentAt: unknown): Promise<{ status: "found"; id: string; label: string } | { status: "unknown" }> {
-  const parsed = validateAssistantActionCommand(command), timestamp = z.string().datetime({ offset: true }).safeParse(sentAt);
-  if (!parsed.success || !timestamp.success || !(await canCreateAssistantInvoice())) return { status: "unknown" };
-  const when = Date.parse(timestamp.data), age = Date.now() - when;
-  if (!Number.isFinite(when) || age < -120_000 || age > 30 * 60_000) return { status: "unknown" };
-  try {
-    const context = await requireOrganizationContext();
-    if (context.branch.id !== expectedBranchId) return { status: "unknown" };
-    const client = await createClient(), args = parsed.data.args;
-    // This reads only this user's recent drafts in the current organization/branch.
-    // A 60-second clock allowance can still create a false match; no write retry follows an unknown result.
-    const { data: candidates, error } = await client.from("sales_invoices")
-      .select("id,reference,notes")
-      .eq("organization_id", context.organization.id).eq("branch_id", expectedBranchId)
-      .eq("created_by", context.user.id).eq("customer_id", args.customerId)
-      .eq("invoice_date", args.documentDate).eq("due_date", args.dueDate)
-      .eq("status", "draft").gte("created_at", new Date(when - 60_000).toISOString())
-      .order("created_at", { ascending: false }).limit(26);
-    if (error || !candidates || candidates.length === 0 || candidates.length > 25) return { status: "unknown" };
-    const { data: lines, error: lineError } = await client.from("sales_invoice_lines")
-      .select("invoice_id,product_id,description,quantity,unit_price,discount,revenue_account_id,tax_rate_id,inventory_location_id")
-      .eq("organization_id", context.organization.id).in("invoice_id", candidates.map((item) => item.id));
-    if (lineError || !lines) return { status: "unknown" };
-    const matches = matchingRecentInvoiceDrafts(args, candidates, lines);
-    if (matches.length !== 1) return { status: "unknown" };
-    return { status: "found", id: matches[0],
-      label: args.reference?.trim() || `Draft ${matches[0].slice(0, 8)}` };
-  } catch { return { status: "unknown" }; }
+  return { id, label: args.reference?.trim() || `Draft ${id.slice(0, 8)}`, status: "draft" };
 }

@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { useEffect, useReducer, useRef, useState } from "react";
-import { getAssistantInvoiceData, recoverAssistantInvoiceDraft, saveAssistantInvoiceDraft, type AssistantInvoiceData } from "@/app/actions/assistant-invoice";
+import { getAssistantInvoiceData, saveAssistantInvoiceDraft, type AssistantInvoiceData } from "@/app/actions/assistant-invoice";
 import { calculateBusinessDocumentTotals } from "@/lib/business-document-totals";
 import { documentSchema, documentValidationMessage } from "@/lib/business-document-validation";
 import { newLine, productSelectionPatch, type BusinessDocumentLine } from "@/lib/business-document-lines";
 import { assistantActionCommandSchema, type ActionId } from "@/lib/assistant/action-registry";
 import { dubaiCalendarDate } from "@/lib/dubai-date";
 import { emptyInvoiceState, guidedInvoiceReducer } from "@/lib/assistant/invoice-flow";
+import { acquireAssistantRequestKey, clearAssistantRequestKey, rotateAssistantRequestKey } from "@/lib/assistant/client-request-key";
 import { CustomerSelector } from "./customer-selector";
 import { ActionSwitcher } from "./action-switcher";
 import styles from "./guided-invoice.module.css";
@@ -34,7 +35,8 @@ export function GuidedInvoice({ onClose, onSwitch, allowed, initialCustomerId }:
     initiated.current = true;
     void getAssistantInvoiceData().then((result) => {
       if ("error" in result) { setLoadError(result.error); return; }
-      setData(result); dispatch({ type: "begin", today: dubaiCalendarDate(), requestId: crypto.randomUUID(), firstLine: blankLine(result),
+      setData(result); dispatch({ type: "begin", today: dubaiCalendarDate(),
+        requestId: acquireAssistantRequestKey("create_invoice_draft", result.branch.id), firstLine: blankLine(result),
         initialCustomerId: result.customers.some((customer) => customer.id === initialCustomerId) ? initialCustomerId : undefined });
     }).catch(() => setLoadError("Invoice choices could not be loaded. Return to Assistant and try again."));
   }, [initialCustomerId]);
@@ -79,35 +81,31 @@ export function GuidedInvoice({ onClose, onSwitch, allowed, initialCustomerId }:
     dispatch({ type: "lines", lines: state.lines.map((line, i) => i === index ? { ...line, ...patch } : line) });
   }
   async function confirm() {
-    if (saving.current || state.stage !== "preview" || !data) return;
+    if (saving.current || !["preview", "uncertain"].includes(state.stage) || !data) return;
     const previewBranchId = data.branch.id;
     const checked = assistantActionCommandSchema.safeParse(command());
     if (!checked.success) { dispatch({ type: "issue", error: documentValidationMessage("invoice", checked.error.issues) }); return; }
     saving.current = true;
     dispatch({ type: "confirm" });
-    const sentAt = new Date().toISOString();
     try {
-      const result = await saveAssistantInvoiceDraft(checked.data, previewBranchId);
+      const result = await saveAssistantInvoiceDraft(checked.data, previewBranchId, state.requestId);
       if ("error" in result) {
-        if (result.safeToRetry) { saving.current = false; dispatch({ type: "failed", error: result.error }); }
-        else await checkRecovery(checked.data, previewBranchId, sentAt);
+        saving.current = false;
+        if (result.safeToRetry) dispatch({ type: "failed", error: result.error });
+        else dispatch({ type: "uncertain", error: result.error });
         return;
       }
       dispatch({ type: "saved", id: result.id, number: result.label });
     } catch {
-      await checkRecovery(checked.data, previewBranchId, sentAt);
+      saving.current = false;
+      dispatch({ type: "uncertain", error: "The save response was lost. Retry with this same request ID; it cannot create a second draft." });
     }
   }
-  async function checkRecovery(checked: unknown, branchId: string, sentAt: string) {
-    dispatch({ type: "checking" });
-    try {
-      const result = await recoverAssistantInvoiceDraft(checked, branchId, sentAt);
-      if (result.status === "found") { dispatch({ type: "recovered", id: result.id, label: result.label }); return; }
-    } catch { /* A failed read cannot establish whether a write succeeded. */ }
-    dispatch({ type: "uncertain", error: "We couldn't confirm whether the draft was created. Check Sales Invoices before retrying." });
-  }
-  function cancel() { if (["saving", "checking"].includes(state.stage)) return; dispatch({ type: "cancel" }); onClose(); }
-  function another() { saving.current = false; dispatch({ type: "begin", today: dubaiCalendarDate(), requestId: crypto.randomUUID(),
+  function cancel() { if (["saving", "checking"].includes(state.stage)) return;
+    if (data && state.stage !== "uncertain") clearAssistantRequestKey("create_invoice_draft", data.branch.id);
+    dispatch({ type: "cancel" }); onClose(); }
+  function another() { saving.current = false; dispatch({ type: "begin", today: dubaiCalendarDate(),
+    requestId: data ? rotateAssistantRequestKey("create_invoice_draft", data.branch.id) : crypto.randomUUID(),
     firstLine: data ? blankLine(data) : undefined }); }
 
   if (loadError) return <section className={styles.flow}><h2>Create Invoice</h2><p role="alert" className={styles.error}>{loadError}</p>
@@ -230,8 +228,12 @@ export function GuidedInvoice({ onClose, onSwitch, allowed, initialCustomerId }:
         <button type="button" className={styles.secondary} onClick={cancel}>Back to Assistant</button></div>
     </div>}
     {state.stage === "uncertain" && <div className={styles.panel} role="alert"><h3>Save result needs checking</h3>
-      <p className={styles.error}>{state.error}</p><p>No second save will be attempted from this screen.</p>
-      <div className={styles.actions}><Link className={styles.primary} href="/sales/invoices">Check Sales Invoices</Link>
+      <p className={styles.error}>{state.error}</p>
+      {!state.error.includes("Start a new action") && !state.error.includes("Start this action again") &&
+        <p>Retry uses the same request ID. Ledgerly will return the original draft if it was created.</p>}
+      <div className={styles.actions}>{!state.error.includes("Start a new action") && !state.error.includes("Start this action again") &&
+        <button type="button" className={styles.primary} onClick={() => void confirm()}>Retry safely</button>}
+        <Link className={styles.secondary} href="/sales/invoices">Check Sales Invoices</Link>
         <button type="button" className={styles.secondary} onClick={cancel}>Back to Assistant</button></div></div>}
     {state.stage !== "uncertain" && <ActionSwitcher current="create_invoice_draft" allowed={allowed}
       disabled={["saving", "checking"].includes(state.stage)}
