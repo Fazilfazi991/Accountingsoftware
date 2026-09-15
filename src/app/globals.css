@@ -50,6 +50,7 @@ body,.main{overflow-x:hidden}.app,.content,.dashboard-grid,.panel{min-width:0}
 @media print{.sidebar-wrap,.topbar,.print-actions{display:none!important}.content{max-width:none;padding:0}.print-document{max-width:none;border:0;padding:0}.main{width:100%}body{background:#fff}.print-document a{color:inherit;text-decoration:none}.print-document thead{display:table-header-group}.print-document tr,.print-totals,.print-notes,.print-allocations,.print-document footer{break-inside:avoid;page-break-inside:avoid}}
 @media(max-width:760px){
   .sidebar-wrap .sidebar{width:min(304px,84vw);flex-basis:min(304px,84vw);padding:18px 12px;overflow:hidden}
+  .sidebar-wrap:not(.open) .sidebar{box-shadow:none}
   .desktop-nav,.demo-label{display:none}
   .mobile-nav{display:block;flex:1;overflow:hidden}
   .mobile-home a,.mobile-nav-group a{display:block;color:#d3dce8;text-decoration:none;padding:7px 9px;margin:1px 0;border-radius:5px;font-size:13px}
@@ -84,12 +85,13 @@ body,.main{overflow-x:hidden}.app,.content,.dashboard-grid,.panel{min-width:0}
   .sales-filter-primary { display: grid; grid-template-columns: minmax(0, 1fr) 94px auto; gap: 6px; align-items: center; }
   .sales-filter-primary input { width: 100%; min-width: 0; }
   .sales-filter-primary select { width: 94px; min-width: 0; padding: 8px 4px; }
-  .sales-filter-primary .sales-more-filters { display: inline-flex; width: auto; min-height: 36px; padding: 7px 8px; font-size: 11px; justify-content: center; }
+  .sales-filter-primary .sales-more-filters { display: inline-flex; width: auto; min-height: 44px; padding: 8px; font-size: 11px; justify-content: center; }
   .sales-filter-advanced { display: none; }
   .sales-filter-advanced.open { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 9px; }
   .sales-filter-advanced input, .sales-filter-advanced select { width: 100%; min-width: 0; }
   .sales-filter-actions { display: flex; justify-content: flex-end; align-items: center; gap: 12px; margin-top: 8px; }
-  .sales-filter-actions .button { width: auto; flex-basis: auto; min-height: 32px; padding: 5px 10px; }
+  .sales-filter-actions .button { width: auto; flex-basis: auto; min-height: 44px; padding: 8px 10px; }
+  .sales-filter-actions .text-button { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 8px 10px; }
 }
 
 @media (max-width: 390px) {
