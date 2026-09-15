@@ -35,5 +35,19 @@
 .totals{max-width:330px;margin-left:auto}.totals div{display:flex;justify-content:space-between;gap:16px;padding:5px 0}.totals dd{margin:0;text-align:right;font-size:14px;white-space:nowrap}
 .totals .grand{border-top:1px solid #cadcca;margin-top:7px;padding-top:10px}.grand dt,.grand dd{color:#194a32;font-size:16px;font-weight:800}
 .success{background:#f9fcf9}.success h3{color:#205737}
+.inlineLink{border:0;background:transparent;color:#286b45;text-decoration:underline;text-underline-offset:3px;
+  padding:7px 1px;min-height:44px;cursor:pointer;font:inherit;font-weight:700}
+.switcher{display:flex;gap:7px;flex-wrap:wrap;margin:16px 0 0;padding:12px;border:1px solid #e1eae2;
+  background:#f7faf7;border-radius:12px}
+.switcher button{font:inherit;font-size:12px;font-weight:700;color:#275741;background:#fff;border:1px solid #cbded0;
+  border-radius:8px;min-height:44px;padding:8px 12px;cursor:pointer}
+.switcher button[aria-current=step]{background:#e9f3eb;color:#204c32;border-color:#8bb899}
+.switcher button:disabled{cursor:not-allowed;opacity:.58}
+.duplicate{background:#fdf9ef;border:1px solid #eadcb4;border-radius:11px;padding:14px;margin-top:16px}
+.duplicate h4{margin:0 0 5px;color:#684b1b;font-size:15px}.duplicate p{font-size:12px;margin:0 0 10px}
+.duplicateRow{display:flex;align-items:center;justify-content:space-between;gap:10px;border-top:1px solid #e9dfc8;padding:10px 0}
+.duplicateRow strong,.duplicateRow small{display:block}.duplicateRow strong{overflow-wrap:anywhere}
+.duplicateRow small{font-size:12px;color:#6d715e;margin-top:3px}
 @media(max-width:650px){.flow{padding-bottom:24px}.flow h2{font-size:23px}.flow h3{font-size:18px}.panel{padding:16px}.progress{gap:4px}.progress li{display:block;text-align:center;padding:7px 3px;font-size:10px}.progress li span{margin:0 auto 4px}.fields{gap:11px}.previewHead{display:block}.previewHead span{display:inline-block;margin:0 0 12px}.actions{justify-content:stretch}.actions>*{flex:1 1 42%}.actions .primary{flex:1 1 100%}.summary{gap:10px}.previewLines>div{flex-wrap:wrap}.previewLines b{text-align:left}.totals{max-width:none}}
-@media(max-width:390px){.progress li{font-size:9px}.panel{padding:14px}.actions>*{flex:1 1 100%}}
+@media(max-width:390px){.progress li{font-size:9px}.panel{padding:14px}.actions>*{flex:1 1 100%}
+  .duplicateRow{align-items:stretch;flex-direction:column}.switcher button{flex:1 1 44%}}

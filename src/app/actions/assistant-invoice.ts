@@ -5,6 +5,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getBusinessDocumentData, saveBusinessDocument, type BusinessDocumentData } from "./business-documents";
 import { validateAssistantActionCommand, type InvoiceActionArgs } from "@/lib/assistant/action-registry";
 import { documentValidationMessage } from "@/lib/business-document-validation";
+import { matchingRecentInvoiceDrafts } from "@/lib/assistant/invoice-recovery";
+import { z } from "zod";
 
 export type AssistantInvoiceData = Pick<BusinessDocumentData,
   "branch" | "customers" | "products" | "locations" | "accounts" | "taxRates" | "summary">;
@@ -74,4 +76,35 @@ export async function saveAssistantInvoiceDraft(command: unknown, expectedBranch
   if ("error" in result) return { error: result.error || "The invoice draft could not be saved.", safeToRetry: false };
   // The Sales Invoice domain only assigns invoice_number on posting. Never claim a draft was numbered.
   return { id: result.id, label: args.reference?.trim() || `Draft ${result.id.slice(0, 8)}`, status: "draft" };
+}
+
+export async function recoverAssistantInvoiceDraft(command: unknown, expectedBranchId: string,
+  sentAt: unknown): Promise<{ status: "found"; id: string; label: string } | { status: "unknown" }> {
+  const parsed = validateAssistantActionCommand(command), timestamp = z.string().datetime({ offset: true }).safeParse(sentAt);
+  if (!parsed.success || !timestamp.success || !(await canCreateAssistantInvoice())) return { status: "unknown" };
+  const when = Date.parse(timestamp.data), age = Date.now() - when;
+  if (!Number.isFinite(when) || age < -120_000 || age > 30 * 60_000) return { status: "unknown" };
+  try {
+    const context = await requireOrganizationContext();
+    if (context.branch.id !== expectedBranchId) return { status: "unknown" };
+    const client = await createClient(), args = parsed.data.args;
+    // This reads only this user's recent drafts in the current organization/branch.
+    // A 60-second clock allowance can still create a false match; no write retry follows an unknown result.
+    const { data: candidates, error } = await client.from("sales_invoices")
+      .select("id,reference,notes")
+      .eq("organization_id", context.organization.id).eq("branch_id", expectedBranchId)
+      .eq("created_by", context.user.id).eq("customer_id", args.customerId)
+      .eq("invoice_date", args.documentDate).eq("due_date", args.dueDate)
+      .eq("status", "draft").gte("created_at", new Date(when - 60_000).toISOString())
+      .order("created_at", { ascending: false }).limit(26);
+    if (error || !candidates || candidates.length === 0 || candidates.length > 25) return { status: "unknown" };
+    const { data: lines, error: lineError } = await client.from("sales_invoice_lines")
+      .select("invoice_id,product_id,description,quantity,unit_price,discount,revenue_account_id,tax_rate_id,inventory_location_id")
+      .eq("organization_id", context.organization.id).in("invoice_id", candidates.map((item) => item.id));
+    if (lineError || !lines) return { status: "unknown" };
+    const matches = matchingRecentInvoiceDrafts(args, candidates, lines);
+    if (matches.length !== 1) return { status: "unknown" };
+    return { status: "found", id: matches[0],
+      label: args.reference?.trim() || `Draft ${matches[0].slice(0, 8)}` };
+  } catch { return { status: "unknown" }; }
 }

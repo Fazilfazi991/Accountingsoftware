@@ -2,13 +2,15 @@
 
 import Link from "next/link";
 import { useEffect, useReducer, useRef, useState } from "react";
-import { getAssistantInvoiceData, saveAssistantInvoiceDraft, type AssistantInvoiceData } from "@/app/actions/assistant-invoice";
+import { getAssistantInvoiceData, recoverAssistantInvoiceDraft, saveAssistantInvoiceDraft, type AssistantInvoiceData } from "@/app/actions/assistant-invoice";
 import { calculateBusinessDocumentTotals } from "@/lib/business-document-totals";
 import { documentSchema, documentValidationMessage } from "@/lib/business-document-validation";
 import { newLine, productSelectionPatch, type BusinessDocumentLine } from "@/lib/business-document-lines";
-import { assistantActionCommandSchema } from "@/lib/assistant/action-registry";
+import { assistantActionCommandSchema, type ActionId } from "@/lib/assistant/action-registry";
 import { dubaiCalendarDate } from "@/lib/dubai-date";
 import { emptyInvoiceState, guidedInvoiceReducer } from "@/lib/assistant/invoice-flow";
+import { CustomerSelector } from "./customer-selector";
+import { ActionSwitcher } from "./action-switcher";
 import styles from "./guided-invoice.module.css";
 
 const money = (value: number) => new Intl.NumberFormat("en-AE", { style: "currency", currency: "AED" }).format(value);
@@ -19,24 +21,26 @@ function blankLine(data: AssistantInvoiceData): BusinessDocumentLine {
   return { ...line, productId: "", description: "", unitPrice: 0, taxRateId: "", locationId: "" };
 }
 
-export function GuidedInvoice({ onClose }: { onClose: () => void }) {
+export function GuidedInvoice({ onClose, onSwitch, allowed, initialCustomerId }: {
+  onClose: () => void; onSwitch: (target: ActionId, discardRequired: boolean) => void;
+  allowed: Record<string, boolean>; initialCustomerId?: string;
+}) {
   const [state, dispatch] = useReducer(guidedInvoiceReducer, emptyInvoiceState);
   const [data, setData] = useState<AssistantInvoiceData | null>(null);
   const [loadError, setLoadError] = useState("");
-  const [customerSearch, setCustomerSearch] = useState("");
   const initiated = useRef(false), saving = useRef(false);
   useEffect(() => {
     if (initiated.current) return;
     initiated.current = true;
     void getAssistantInvoiceData().then((result) => {
       if ("error" in result) { setLoadError(result.error); return; }
-      setData(result); dispatch({ type: "begin", today: dubaiCalendarDate(), requestId: crypto.randomUUID(), firstLine: blankLine(result) });
+      setData(result); dispatch({ type: "begin", today: dubaiCalendarDate(), requestId: crypto.randomUUID(), firstLine: blankLine(result),
+        initialCustomerId: result.customers.some((customer) => customer.id === initialCustomerId) ? initialCustomerId : undefined });
     }).catch(() => setLoadError("Invoice choices could not be loaded. Return to Assistant and try again."));
-  }, []);
+  }, [initialCustomerId]);
 
   const customer = data?.customers.find((item) => item.id === state.customerId);
   const totals = calculateBusinessDocumentTotals(state.lines, data?.taxRates || []);
-  const filteredCustomers = data?.customers.filter((item) => item.name.toLowerCase().includes(customerSearch.toLowerCase().trim())) || [];
   const incomeAccounts = data?.accounts.filter((item) => item.account_type === "income") || [];
   const lineError = () => {
     const checked = documentSchema.shape.lines.safeParse(state.lines.map((line) => ({
@@ -81,21 +85,30 @@ export function GuidedInvoice({ onClose }: { onClose: () => void }) {
     if (!checked.success) { dispatch({ type: "issue", error: documentValidationMessage("invoice", checked.error.issues) }); return; }
     saving.current = true;
     dispatch({ type: "confirm" });
+    const sentAt = new Date().toISOString();
     try {
       const result = await saveAssistantInvoiceDraft(checked.data, previewBranchId);
       if ("error" in result) {
         if (result.safeToRetry) { saving.current = false; dispatch({ type: "failed", error: result.error }); }
-        else dispatch({ type: "uncertain", error: `${result.error} The save result is uncertain. Check Sales Invoices before starting another draft.` });
+        else await checkRecovery(checked.data, previewBranchId, sentAt);
         return;
       }
       dispatch({ type: "saved", id: result.id, number: result.label });
     } catch {
-      dispatch({ type: "uncertain", error: "The save result could not be confirmed. Check Sales Invoices before starting another draft." });
+      await checkRecovery(checked.data, previewBranchId, sentAt);
     }
   }
-  function cancel() { if (state.stage === "saving") return; dispatch({ type: "cancel" }); onClose(); }
+  async function checkRecovery(checked: unknown, branchId: string, sentAt: string) {
+    dispatch({ type: "checking" });
+    try {
+      const result = await recoverAssistantInvoiceDraft(checked, branchId, sentAt);
+      if (result.status === "found") { dispatch({ type: "recovered", id: result.id, label: result.label }); return; }
+    } catch { /* A failed read cannot establish whether a write succeeded. */ }
+    dispatch({ type: "uncertain", error: "We couldn't confirm whether the draft was created. Check Sales Invoices before retrying." });
+  }
+  function cancel() { if (["saving", "checking"].includes(state.stage)) return; dispatch({ type: "cancel" }); onClose(); }
   function another() { saving.current = false; dispatch({ type: "begin", today: dubaiCalendarDate(), requestId: crypto.randomUUID(),
-    firstLine: data ? blankLine(data) : undefined }); setCustomerSearch(""); }
+    firstLine: data ? blankLine(data) : undefined }); }
 
   if (loadError) return <section className={styles.flow}><h2>Create Invoice</h2><p role="alert" className={styles.error}>{loadError}</p>
     <button type="button" className={styles.secondary} onClick={cancel}>Back to Assistant</button></section>;
@@ -103,8 +116,8 @@ export function GuidedInvoice({ onClose }: { onClose: () => void }) {
     <p>Loading customers, products, tax rates and stock for this branch…</p></section>;
   return <section className={styles.flow} aria-label="Guided invoice creation">
     <div className={styles.top}><div><h2>Create Invoice</h2><p>Prepare a sales invoice draft with Ledgerly’s existing workflow.</p></div>
-      {!["saving", "success", "uncertain"].includes(state.stage) && <button type="button" className={styles.textButton} onClick={cancel}>Cancel</button>}</div>
-    {!["success", "uncertain"].includes(state.stage) && <ol className={styles.progress} aria-label="Invoice steps">
+      {!["saving", "checking", "uncertain"].includes(state.stage) && <button type="button" className={styles.textButton} onClick={cancel}>{state.stage === "success" ? "Back to Assistant" : "Cancel"}</button>}</div>
+    {!["success", "uncertain", "checking"].includes(state.stage) && <ol className={styles.progress} aria-label="Invoice steps">
       {stages.map((label, index) => <li key={label} className={label.toLowerCase() === state.stage ? styles.current :
         ["customer", "items", "details", "preview", "saving"].indexOf(state.stage) > index ? styles.complete : ""}>
         <span>{index + 1}</span>{label}</li>)}</ol>}
@@ -112,17 +125,9 @@ export function GuidedInvoice({ onClose }: { onClose: () => void }) {
 
     {state.stage === "customer" && <div className={styles.panel}>
       <h3>Who is this invoice for?</h3><p>Choose an active customer from your company.</p>
-      <label className={styles.field}>Find customer<input type="search" value={customerSearch}
-        onChange={(event) => setCustomerSearch(event.target.value)} placeholder="Search by customer name" autoComplete="off" /></label>
-      {customer && <div className={styles.selected}><span>Selected</span><strong>{customer.name}</strong>
-        <button type="button" className={styles.textButton} onClick={() => dispatch({ type: "customer", id: "" })}>Change</button></div>}
-      <div className={styles.customerList} aria-label="Customers">
-        {filteredCustomers.slice(0, 30).map((item) => <button type="button" aria-pressed={item.id === state.customerId}
-          key={item.id} onClick={() => dispatch({ type: "customer", id: item.id })}>{item.name}</button>)}
-        {filteredCustomers.length === 0 && <p>No matching active customers.</p>}
-        {filteredCustomers.length > 30 && <p>Showing the first 30 matches. Refine your search.</p>}
-      </div>
-      <p className={styles.hint}>Need a new customer? <Link href="/sales/customers/new">Use the full customer form</Link>, then return here.</p>
+      <CustomerSelector customers={data.customers} selectedId={state.customerId}
+        onChoose={(id) => dispatch({ type: "customer", id })}
+        onAddCustomer={() => onSwitch("create_customer", true)} />
       {state.error && <p role="alert" className={styles.error}>{state.error}</p>}
       <div className={styles.actions}><button type="button" className={styles.primary} onClick={next}>Continue to items</button></div>
     </div>}
@@ -195,13 +200,14 @@ export function GuidedInvoice({ onClose }: { onClose: () => void }) {
         <span>Draft · not posted</span></div>
       <dl className={styles.summary}><div><dt>Customer</dt><dd>{customer?.name || "—"}</dd></div>
         <div><dt>Invoice date</dt><dd>{state.documentDate}</dd></div><div><dt>Due date</dt><dd>{state.dueDate}</dd></div>
-        {state.reference && <div><dt>Reference</dt><dd>{state.reference}</dd></div>}</dl>
+        {state.reference && <div><dt>Reference</dt><dd>{state.reference}</dd></div>}
+        {state.notes && <div><dt>Notes</dt><dd>{state.notes}</dd></div>}</dl>
       <div className={styles.previewLines}>{state.lines.map((line, index) => <div key={index}><div><strong>{line.description}</strong>
         <small>{line.quantity} × {money(line.unitPrice)}{line.discount ? ` · ${money(line.discount)} discount` : ""}</small></div>
         <b>{money(totals.details[index]?.total || 0)}</b></div>)}</div>
       <dl className={styles.totals}><div><dt>Subtotal after discount</dt><dd>{money(totals.subtotal)}</dd></div>
         {totals.discount > 0 && <div><dt>Discount included</dt><dd>{money(totals.discount)}</dd></div>}
-        <div><dt>VAT</dt><dd>{money(totals.vat)}</dd></div><div className={styles.grand}><dt>Grand total</dt><dd>{money(totals.total)}</dd></div></dl>
+        <div><dt>VAT</dt><dd>{money(totals.vat)}</dd></div><div className={styles.grand}><dt>Preview total</dt><dd>{money(totals.total)}</dd></div></dl>
       <p className={styles.hint}>Preview uses the same calculation as the full invoice form. Booked amounts remain determined by Ledgerly when posted.</p>
       {state.error && <p role="alert" className={styles.error}>{state.error}</p>}
       <div className={styles.actions}><button type="button" className={styles.secondary} disabled={state.stage === "saving"}
@@ -212,10 +218,13 @@ export function GuidedInvoice({ onClose }: { onClose: () => void }) {
           {state.stage === "saving" ? "Saving draft…" : "Save as Draft"}</button></div>
     </div>}
 
+    {state.stage === "checking" && <div className={styles.panel} role="status"><h3>Checking draft</h3>
+      <p>We&apos;re checking whether your invoice draft was created. Please wait; no second save is being attempted.</p></div>}
     {state.stage === "success" && <div className={`${styles.panel} ${styles.success}`} role="status">
-      <h3>Invoice draft created</h3><p><strong>{state.savedNumber}</strong> for {customer?.name || "your customer"}</p>
-      <dl className={styles.summary}><div><dt>Total preview</dt><dd>{money(totals.total)}</dd></div>
-        <div><dt>Status</dt><dd>Draft · not posted or sent</dd></div></dl>
+      <h3>{state.recovered ? "Invoice draft found" : "Invoice draft created"}</h3>
+      <p><strong>{state.savedNumber}</strong> for {customer?.name || "your customer"}</p>
+      <dl className={styles.summary}><div><dt>Preview total</dt><dd>{money(totals.total)}</dd></div>
+        <div><dt>Status</dt><dd>Draft · not yet posted or sent</dd></div></dl>
       <div className={styles.actions}><Link className={styles.primary} href={`/sales/invoices/${state.savedId}`}>Open Invoice</Link>
         <button type="button" className={styles.secondary} onClick={another}>Create Another</button>
         <button type="button" className={styles.secondary} onClick={cancel}>Back to Assistant</button></div>
@@ -224,5 +233,8 @@ export function GuidedInvoice({ onClose }: { onClose: () => void }) {
       <p className={styles.error}>{state.error}</p><p>No second save will be attempted from this screen.</p>
       <div className={styles.actions}><Link className={styles.primary} href="/sales/invoices">Check Sales Invoices</Link>
         <button type="button" className={styles.secondary} onClick={cancel}>Back to Assistant</button></div></div>}
+    {state.stage !== "uncertain" && <ActionSwitcher current="create_invoice_draft" allowed={allowed}
+      disabled={["saving", "checking"].includes(state.stage)}
+      onRequest={(target) => onSwitch(target, state.stage !== "success")} />}
   </section>;
 }

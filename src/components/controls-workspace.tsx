@@ -627,6 +627,14 @@ function PartyMaster({ kind }: { kind: "customer" | "supplier" }) {
     [kind],
   );
   useEffect(load, [load]);
+  useEffect(() => {
+    if (kind !== "customer" || !window.location.hash.startsWith("#customer-")) return;
+    const target = document.getElementById(window.location.hash.slice(1));
+    if (target) {
+      target.classList.add("customer-deep-link");
+      target.scrollIntoView({ block: "center" });
+    }
+  }, [kind, rows]);
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget),
@@ -684,7 +692,7 @@ function PartyMaster({ kind }: { kind: "customer" | "supplier" }) {
             </thead>
             <tbody>
               {rows.map((r) => (
-                <tr key={r.id}>
+                <tr key={r.id} id={kind === "customer" ? `customer-${r.id}` : undefined}>
                   <td>{r.name}</td>
                   <td>{r.trn || "—"}</td>
                   <td>

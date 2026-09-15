@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireOrganizationContext } from "@/lib/organization-context";
 import { createClient } from "@/lib/supabase/server";
+import { operationalDocumentSchema, operationalLineSchema } from "@/lib/sales-workflow-validation";
 
 const uuid = z.string().uuid();
 const filterSchema = z.object({
@@ -11,8 +12,6 @@ const filterSchema = z.object({
   productId: uuid.optional(), from: z.string().date().optional(), to: z.string().date().optional(),
   status: z.enum(["not_converted","partial","full"]).optional(), page: z.coerce.number().int().min(1).max(10000).default(1),
 });
-const lineSchema = z.object({ productId: uuid, description: z.string().trim().min(1).max(300), quantity: z.coerce.number().positive(), unitPrice: z.coerce.number().min(0), discount: z.coerce.number().min(0), taxRateId: uuid.optional(), accountId: uuid });
-const saveSchema = z.object({ id: uuid.optional(), kind: z.enum(["quotation","delivery_note"]), customerId: uuid, date: z.string().date(), expiry: z.string().date().optional(), reference: z.string().trim().max(120).optional(), notes: z.string().trim().max(500).optional(), lines: z.array(lineSchema).min(1), allocations: z.array(z.object({sourceType:z.enum(["quotation","delivery_note"]),sourceDocumentId:uuid,sourceLineId:uuid,quantity:z.coerce.number().positive()})).default([]) });
 export type SalesWorkflowData = { customers:any[]; products:any[]; accounts:any[]; taxRates:any[]; quotations:any[]; quotationLines:any[]; deliveryNotes:any[]; deliveryLines:any[]; invoices:any[]; invoiceLines:any[]; conversions:any[]; page:number; pageSize:number; totalCount:number };
 
 export async function getSalesWorkflowData(kind:"quotation"|"delivery_note"|"invoice", raw:unknown={}):Promise<SalesWorkflowData|{error:string}> {
@@ -55,7 +54,7 @@ export async function getSalesWorkflowData(kind:"quotation"|"delivery_note"|"inv
 }
 
 export async function saveOperationalDocument(raw:unknown){
- const parsed=saveSchema.safeParse(raw); if(!parsed.success) return {error:"Enter valid document details and at least one line."};
+ const parsed=operationalDocumentSchema.safeParse(raw); if(!parsed.success) return {error:"Enter valid document details and at least one line."};
  try { const context=await requireOrganizationContext(),client=await createClient(),p=parsed.data;
   const rpcLines=p.lines.map(x=>({product_id:x.productId,description:x.description,quantity:x.quantity,unit_price:x.unitPrice,discount:x.discount,tax_rate_id:x.taxRateId||null,revenue_account_id:x.accountId}));
   const rpcAllocations=p.allocations.map(x=>({source_type:x.sourceType,source_document_id:x.sourceDocumentId,source_line_id:x.sourceLineId,quantity:x.quantity}));
@@ -85,7 +84,7 @@ export async function recordInvoiceConversions(invoiceId:string, allocations:any
 }
 
 export async function saveConvertedInvoice(raw:unknown){
- const parsed=z.object({customerId:uuid,documentDate:z.string().date(),dueDate:z.string().date(),reference:z.string().trim().max(120).optional(),notes:z.string().trim().max(500).optional(),lines:z.array(lineSchema).min(1),allocations:z.array(z.object({sourceType:z.enum(["quotation","delivery_note"]),sourceDocumentId:uuid,sourceLineId:uuid,quantity:z.coerce.number().positive()})).min(1)}).safeParse(raw);
+ const parsed=z.object({customerId:uuid,documentDate:z.string().date(),dueDate:z.string().date(),reference:z.string().trim().max(120).optional(),notes:z.string().trim().max(500).optional(),lines:z.array(operationalLineSchema).min(1),allocations:z.array(z.object({sourceType:z.enum(["quotation","delivery_note"]),sourceDocumentId:uuid,sourceLineId:uuid,quantity:z.coerce.number().positive()})).min(1)}).safeParse(raw);
  if(!parsed.success||parsed.data.dueDate<parsed.data.documentDate)return{error:"Enter valid converted invoice details."};
  try{const context=await requireOrganizationContext(),client=await createClient(),p=parsed.data,{data,error}=await client.rpc("create_converted_sales_invoice_draft",{p_organization_id:context.organization.id,p_customer_id:p.customerId,p_invoice_date:p.documentDate,p_due_date:p.dueDate,p_lines:p.lines.map(x=>({description:x.description,quantity:x.quantity,unit_price:x.unitPrice,discount:x.discount,tax_rate_id:x.taxRateId||null,product_id:x.productId,inventory_location_id:(x as any).locationId||null,revenue_account_id:x.accountId})),p_allocations:p.allocations.map(x=>({source_type:x.sourceType,source_document_id:x.sourceDocumentId,source_line_id:x.sourceLineId,quantity:x.quantity})),p_branch_id:context.branch.id,p_reference:p.reference||null,p_notes:p.notes||null});if(error)return{error:error.message};revalidatePath("/","layout");return{id:String(data)};}catch{return{error:"Unable to save converted invoice atomically."};}
 }

@@ -3,8 +3,10 @@
 import Link from "next/link";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { AssistantAnswer, ConversationTurn } from "@/lib/assistant/types";
-import { actionRegistry } from "@/lib/assistant/action-registry";
+import { actionRegistry, type ActionId } from "@/lib/assistant/action-registry";
 import { GuidedInvoice } from "./guided-invoice";
+import { GuidedQuotation } from "./guided-quotation";
+import { GuidedCustomer } from "./guided-customer";
 import styles from "./assistant-chat.module.css";
 
 const prompts = [
@@ -14,27 +16,43 @@ const prompts = [
 ] as const;
 type Message = { id: number; question: string; response?: AssistantAnswer; error?: string; notice?: string };
 
-export function AssistantChat({ organization, branch, providerConfigured = false, invoiceAllowed = false }: {
-  organization: string; branch: string; providerConfigured?: boolean; invoiceAllowed?: boolean;
+export function AssistantChat({ organization, branch, providerConfigured = false, allowed }: {
+  organization: string; branch: string; providerConfigured?: boolean; allowed: Record<string, boolean>;
 }) {
   const [messages, setMessages] = useState<Message[]>([]), [draft, setDraft] = useState(""), [pending, setPending] = useState(false),
-    [invoiceActive, setInvoiceActive] = useState(false);
+    [activeAction, setActiveAction] = useState<ActionId | null>(null), [handoffCustomerId, setHandoffCustomerId] = useState<string>(),
+    [switchPrompt, setSwitchPrompt] = useState<{ target: ActionId; customerId?: string } | null>(null),
+    [customerOrigin, setCustomerOrigin] = useState<ActionId | null>(null);
   const sequence = useRef(0), scroll = useRef<HTMLDivElement>(null), input = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
     if (messages.length > 0 || pending) scroll.current?.scrollTo({ top: scroll.current.scrollHeight, behavior: "smooth" });
   }, [messages, pending]);
+  function startAction(target: ActionId, customerId?: string) {
+    if (!allowed[target] || actionRegistry[target].status !== "available") return;
+    if (target === "create_customer") setCustomerOrigin(activeAction);
+    setSwitchPrompt(null); setHandoffCustomerId(customerId); setActiveAction(target);
+  }
+  function requestSwitch(target: ActionId, discardRequired: boolean, customerId?: string) {
+    if (!allowed[target] || target === activeAction) return;
+    if (discardRequired) setSwitchPrompt({ target, customerId });
+    else startAction(target, customerId);
+  }
+  function closeAction() { setActiveAction(null); setSwitchPrompt(null); setHandoffCustomerId(undefined); setCustomerOrigin(null); }
   async function send(question: string) {
-    if (pending || invoiceActive || question.trim().length < 2) return;
+    if (pending || activeAction || question.trim().length < 2) return;
     const text = question.trim().slice(0, 500), id = ++sequence.current;
-    if (/^(?:please\s+)?(?:create|make|start|new)\s+(?:an?\s+)?(?:sales\s+)?invoice\b/i.test(text)) {
-      setDraft("");
-      if (invoiceAllowed) setInvoiceActive(true);
-      else setMessages((current) => [...current, { id, question: text, notice: "You do not have permission to create sales invoices." }]);
+    const intent = /^(?:please\s+)?(?:create|make|start|new|add|record)\s+(?:an?\s+)?(?:sales\s+)?(invoice|quotation|customer|expense|purchase bill|payment)\b/i.exec(text);
+    if (intent) {
+      const idByNoun: Record<string, ActionId> = { invoice: "create_invoice_draft", quotation: "create_quotation_draft",
+        customer: "create_customer", expense: "create_expense_draft", "purchase bill": "create_purchase_bill_draft",
+        payment: "record_payment" };
+      const target = idByNoun[intent[1].toLowerCase()]; setDraft("");
+      if (actionRegistry[target].status === "available" && allowed[target]) startAction(target);
+      else setMessages((current) => [...current, { id, question: text, notice: actionRegistry[target].status === "available"
+        ? `You do not have permission to ${actionRegistry[target].label.toLowerCase()}.`
+        : actionRegistry[target].status === "deferred" ? "Payment recording is deferred. Use Ledgerly's full workflow with its review and audit controls."
+          : "That guided action is coming next. Use the full Ledgerly form for now." }]);
       return;
-    }
-    if (/^(?:please\s+)?(?:create|make|add|record)\s+(?:an?\s+)?(?:quotation|customer|expense|purchase bill|payment)\b/i.test(text)) {
-      setDraft(""); setMessages((current) => [...current, { id, question: text,
-        notice: "That guided action is coming next. Use the full Ledgerly form for now." }]); return;
     }
     const turns: ConversationTurn[] = messages.filter((m) => m.response?.toolUsed && m.response.status !== "insufficient_data")
       .slice(-8).map((m) => ({ question: m.question, tool: m.response!.toolUsed!, args: m.response!.resolvedArgs }));
@@ -59,8 +77,24 @@ export function AssistantChat({ organization, branch, providerConfigured = false
         <div className={styles.identity}><strong>{organization}</strong><span>{branch} · Guided financial assistant</span></div>
       </header>
       <div ref={scroll} className={styles.conversation} role="log" aria-label="Assistant conversation" aria-live="polite">
-        {invoiceActive && <GuidedInvoice onClose={() => setInvoiceActive(false)} />}
-        {!invoiceActive && messages.length === 0 && <section className={styles.welcome}>
+        {activeAction === "create_invoice_draft" && <GuidedInvoice key={`${activeAction}:${handoffCustomerId || ""}`}
+          onClose={closeAction} onSwitch={requestSwitch} allowed={allowed} initialCustomerId={handoffCustomerId} />}
+        {activeAction === "create_quotation_draft" && <GuidedQuotation key={`${activeAction}:${handoffCustomerId || ""}`}
+          onClose={closeAction} onSwitch={requestSwitch} allowed={allowed} initialCustomerId={handoffCustomerId} />}
+        {activeAction === "create_customer" && <GuidedCustomer onClose={closeAction} onSwitch={requestSwitch} allowed={allowed}
+          returnTo={customerOrigin} />}
+        {switchPrompt && activeAction && <div className={styles.switchOverlay} role="dialog" aria-modal="true"
+          onKeyDown={(event) => { if (event.key === "Escape") setSwitchPrompt(null); }}
+          aria-labelledby="assistant-switch-title"><div className={styles.switchDialog}>
+          <h2 id="assistant-switch-title">Discard this unsaved {activeAction === "create_customer" ? "customer" :
+            activeAction === "create_quotation_draft" ? "quotation" : "invoice"} and {
+            switchPrompt.target === "create_customer" ? "add a customer" : switchPrompt.target === "create_quotation_draft"
+              ? "start a quotation" : "start an invoice"}?</h2>
+          <p>Your unsaved guided entries will be cleared. No record is created by switching.</p>
+          <div><button type="button" autoFocus onClick={() => setSwitchPrompt(null)}>Keep Editing</button>
+            <button type="button" onClick={() => startAction(switchPrompt.target, switchPrompt.customerId)}>Discard &amp; Continue</button></div>
+        </div></div>}
+        {!activeAction && messages.length === 0 && <section className={styles.welcome}>
           <span className={styles.trust}>{providerConfigured ? "Grounded in Ledgerly records" : "Guided financial assistant · no AI required"}</span>
           <h2>What would you like to do?</h2>
           <p>Financial answers use your selected-branch records. Creation uses guided fields, a preview, and your confirmation.</p>
@@ -69,28 +103,34 @@ export function AssistantChat({ organization, branch, providerConfigured = false
               {label}<span aria-hidden="true">↗</span></button>)}</div></div>
           <div className={styles.startGroup}><div className={styles.groupHeading}><h3>Create</h3><span>Review before saving</span></div>
             <div className={styles.createGrid}>{Object.values(actionRegistry).map((action) => <button type="button" key={action.id}
-              disabled={action.status !== "available" || !invoiceAllowed} onClick={() => setInvoiceActive(true)}
-              aria-label={`${action.label}${action.status !== "available" ? ", coming next" : !invoiceAllowed ? ", unavailable with your permissions" : ""}`}>
-              <strong>{action.label}</strong><small>{action.status === "available" && invoiceAllowed ? "Guided draft" : action.status === "available" ? "No permission" : "Coming next"}</small>
+              disabled={action.status !== "available" || !allowed[action.id]} onClick={() => startAction(action.id)}
+              aria-label={`${action.label}${action.status !== "available" ? action.status === "deferred" ? ", deferred" : ", coming next" :
+                !allowed[action.id] ? ", unavailable with your permissions" : ""}`}>
+              <strong>{action.label}</strong><small>{action.status === "available" && allowed[action.id]
+                ? action.id === "create_invoice_draft" ? "Guided draft" : "Guided creation"
+                : action.status === "available" ? "No permission" : action.status === "deferred" ? "Deferred" : "Coming next"}</small>
             </button>)}</div></div>
         </section>}
-        {!invoiceActive && messages.map((m) => <div className={styles.exchange} key={m.id}>
+        {!activeAction && messages.map((m) => <div className={styles.exchange} key={m.id}>
           <div className={styles.userMessage}>{m.question}</div>
           {m.response && <AnswerCard response={m.response} onPrompt={(p) => void send(p)} />}
           {m.error && <div role="alert" className={styles.error}>{m.error} <button type="button" onClick={() => void send(m.question)}>Retry</button></div>}
           {m.notice && <div className={styles.notice}>{m.notice}</div>}
         </div>)}
-        {!invoiceActive && pending && <div className={styles.loading} role="status">Checking recorded data…</div>}
+        {!activeAction && pending && <div className={styles.loading} role="status">Checking recorded data…</div>}
       </div>
-      {!invoiceActive ? <form className={styles.composer} onSubmit={submit}>
+      {!activeAction ? <form className={styles.composer} onSubmit={submit}>
         <label htmlFor="assistant-question" className={styles.srOnly}>Ask Ledgerly</label>
         <textarea ref={input} id="assistant-question" value={draft} onChange={(event) => setDraft(event.target.value)}
           onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void send(draft); } }}
           maxLength={500} rows={2} placeholder="Ask about cash, customers, bills, sales…" />
         <button type="submit" disabled={pending || draft.trim().length < 2}>Ask Ledgerly <span aria-hidden="true">→</span></button>
-        <small>Financial answers are read-only. Guided creation saves only after your confirmation.
-          {invoiceAllowed && <button type="button" className={styles.composerAction} onClick={() => setInvoiceActive(true)}>Create Invoice</button>}</small>
-      </form> : <div className={styles.actionFooter}>Guided Create Invoice · No record is created until you select Save as Draft.</div>}
+        <small className={styles.composerMeta}><span>Financial answers are read-only. Guided creation saves only after your confirmation.</span>
+          <span className={styles.composerLinks}>{(["create_invoice_draft", "create_quotation_draft", "create_customer"] as const)
+            .filter((id) => allowed[id]).map((id) => <button type="button" key={id} className={styles.composerAction}
+              onClick={() => startAction(id)}>{actionRegistry[id].label}</button>)}</span></small>
+      </form> : <div className={styles.actionFooter}>Guided {actionRegistry[activeAction].label} ·
+        No record is created until you explicitly confirm its preview.</div>}
     </div>
   </div>;
 }

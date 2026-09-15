@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireOrganizationContext } from "@/lib/organization-context";
 import { createClient } from "@/lib/supabase/server";
+import { partySchema } from "@/lib/party-validation";
 
 const opt = z.string().trim().max(500).optional();
 const companySchema = z.object({
@@ -28,17 +29,6 @@ const branchSchema = z.object({
   phone: z.string().trim().max(40).optional(),
   active: z.boolean(),
   defaultLocationId: z.string().uuid().optional(),
-});
-const partySchema = z.object({
-  id: z.string().uuid().optional(),
-  kind: z.enum(["customer", "supplier"]),
-  name: z.string().trim().min(1).max(160),
-  trn: z.string().trim().max(30).optional(),
-  email: z.union([z.string().email(), z.literal("")]),
-  phone: z.string().trim().max(40).optional(),
-  address: opt,
-  paymentTermsDays: z.coerce.number().int().min(0).max(3650),
-  active: z.boolean(),
 });
 const roleSchema = z.enum(["owner", "admin", "accountant", "staff", "viewer"]),
   statusSchema = z.enum(["active", "inactive"]);

@@ -32,4 +32,26 @@ describe("guided invoice state", () => {
     const state = reduce(emptyInvoiceState, { type: "begin", today: "2026-09-15", requestId: "request-c", firstLine: line });
     expect(state.lines).toEqual([line]);
   });
+  it("recovers one ambiguous result without enabling a second confirmation", () => {
+    let state = reduce(emptyInvoiceState, { type: "begin", today: "2026-09-15", requestId: "pending-one",
+      initialCustomerId: "trusted-customer" });
+    expect(state.customerId).toBe("trusted-customer");
+    state = { ...state, stage: "preview" };
+    state = reduce(state, { type: "confirm" });
+    state = reduce(state, { type: "checking" });
+    expect(state.stage).toBe("checking");
+    expect(reduce(state, { type: "confirm" })).toEqual(state);
+    state = reduce(state, { type: "recovered", id: "draft-a", label: "QA reference" });
+    expect(state).toMatchObject({ stage: "success", recovered: true, savedId: "draft-a", savedNumber: "QA reference" });
+    expect(reduce(state, { type: "confirm" })).toEqual(state);
+  });
+  it("keeps an unknown recovery fail-closed and clears pending state on cancellation", () => {
+    let state = reduce(emptyInvoiceState, { type: "begin", today: "2026-09-15", requestId: "pending-two" });
+    state = reduce({ ...state, stage: "preview" }, { type: "confirm" });
+    state = reduce(state, { type: "checking" });
+    state = reduce(state, { type: "uncertain", error: "Check invoices before retrying" });
+    expect(state.stage).toBe("uncertain");
+    expect(reduce(state, { type: "confirm" })).toEqual(state);
+    expect(reduce(state, { type: "cancel" })).toEqual(emptyInvoiceState);
+  });
 });

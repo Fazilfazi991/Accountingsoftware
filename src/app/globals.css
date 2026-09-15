@@ -297,3 +297,4 @@ body,.main{overflow-x:hidden}.app,.content,.dashboard-grid,.panel{min-width:0}
 
 /* Today and Assistant inherit the current rail/topbar without the accounting-page inset. */
 .product-content { max-width: none; padding: 0; min-height: 0; }
+.table-wrap tr.customer-deep-link td { background: #eaf4ec; }
