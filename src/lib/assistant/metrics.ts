@@ -3,7 +3,7 @@ export type OpenItem = { open_item_id: string; party_id: string; party_name: str
 const n = (value: unknown) => Number(value ?? 0);
 export const classifyDue = (items: OpenItem[], today: string, from?: string, to?: string, minimum = 0) => {
   const visible = items.filter((item) => (item.due_date || item.document_date) >= (from || "0000-01-01") &&
-    (item.due_date || item.document_date) <= (to || "9999-12-31") && n(item.outstanding) >= minimum);
+    (item.due_date || item.document_date) <= (to || "9999-12-31") && (minimum > 0 ? n(item.outstanding) > minimum : n(item.outstanding) > 0));
   return { current: visible.filter((item) => (item.due_date || item.document_date) >= today),
     overdue: visible.filter((item) => (item.due_date || item.document_date) < today),
     total: visible.reduce((sum, item) => sum + n(item.outstanding), 0) };
@@ -16,7 +16,7 @@ export const groupOverdue = (items: OpenItem[], today: string, minimum = 0) => {
     grouped.set(item.party_id, { party: item.party_name, id: item.party_id,
       amount: (previous?.amount || 0) + n(item.outstanding), oldest: Math.max(previous?.oldest || 0, days) });
   }
-  return [...grouped.values()].filter((party) => party.amount >= minimum).sort((a, b) => b.amount - a.amount);
+  return [...grouped.values()].filter((party) => party.amount > minimum).sort((a, b) => b.amount - a.amount);
 };
 export const cashPosition = (cash: number, bank: number) => n(cash) + n(bank);
 export const vatPosition = (output: number, input: number) => n(output) - n(input);

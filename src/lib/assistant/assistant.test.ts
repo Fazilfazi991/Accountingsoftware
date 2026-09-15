@@ -64,6 +64,7 @@ describe("deterministic accounting arithmetic", () => {
     expect(classifyDue(items, "2026-09-15").total).toBe(10000);
     expect(classifyDue(items, "2026-09-15").overdue.reduce((sum, i) => sum + i.outstanding, 0)).toBe(8500);
     expect(groupOverdue(items, "2026-09-15", 5000)).toEqual([{ party: "B", id: idB, amount: 6000, oldest: 5 }]);
+    expect(groupOverdue(items, "2026-09-15", 6000)).toEqual([]); // "above" excludes the exact boundary
   });
   it("separates overdue, due-soon and amount-filtered bills", () => {
     const items = [item(idA, "2026-09-10", 100), item(idA, "2026-09-16", 800), item(idB, "2026-09-25", 2000)];
