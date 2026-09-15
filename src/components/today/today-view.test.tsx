@@ -1,5 +1,8 @@
+import { readFileSync } from "node:fs";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import Loading from "@/app/today/loading";
+import Error from "@/app/today/error";
 import { TodayView } from "./today-view";
 import type { TodayData } from "@/lib/today/data";
 
@@ -47,5 +50,39 @@ describe("Today operating states", () => {
     expect(html).toContain("Ledgerly recommends");
     expect(html).toContain("Review invoice →");
     expect(html).toContain(", there");
+  });
+  it("keeps the Today header link a practical mobile touch target", () => {
+    const css = readFileSync(new URL("./today.module.css", import.meta.url), "utf8");
+    expect(css).toMatch(/\.topline \.brand\{[^}]*min-height:44px/);
+  });
+  it("offers a forward-looking collection cue in an all-good state", () => {
+    const html = renderToStaticMarkup(<TodayView data={{ ...base, nextCollections: 500 } as TodayData} />);
+    expect(html).toContain("all caught up");
+    expect(html).toContain("AED 500 is due from customers in the next seven days.");
+    expect(html).not.toContain("Review invoice →");
+  });
+  it("withholds unavailable financial values instead of substituting zero", () => {
+    const html = renderToStaticMarkup(<TodayView data={{ ...base, money: null, attention: null, activity: null,
+      pulse: null, upcoming: null, warnings: ["Customer due-date details are unavailable."] } as TodayData} />);
+    expect(html).toContain("Some figures are unavailable.");
+    expect(html).toContain("Cash and due-date projection unavailable.");
+    expect(html).toContain("Month-to-date ledger figures are unavailable.");
+    expect(html).toContain("Same-day posted activity cannot be verified right now.");
+    expect(html).not.toContain("Cash now");
+  });
+  it("keeps the primary posted balance usable when a secondary comparison fails", () => {
+    const html = renderToStaticMarkup(<TodayView data={{ ...base, pulse: null,
+      warnings: ["Ledger month comparison is unavailable."] } as TodayData} />);
+    expect(html).toContain("Cash now");
+    expect(html).toContain("AED 1,000");
+    expect(html).toContain("Month-to-date ledger figures are unavailable.");
+  });
+  it("keeps loading and route-error recovery available", () => {
+    const loading = renderToStaticMarkup(<Loading />);
+    const error = renderToStaticMarkup(<Error reset={() => {}} />);
+    expect(loading).toContain('aria-label="Loading Today"');
+    expect(error).toContain("Today is temporarily unavailable");
+    expect(error).toContain("Try again");
+    expect(error).toContain("Return to Dashboard");
   });
 });
