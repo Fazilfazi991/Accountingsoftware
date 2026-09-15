@@ -11,22 +11,13 @@ import {
 } from "@/app/actions/business-documents";
 import { getConversionSources, saveConvertedInvoice } from "@/app/actions/sales-workflow";
 import { dubaiCalendarDate } from "@/lib/dubai-date";
-type Kind = "invoice" | "bill";
-type Line = {
-  productId: string;
-  description: string;
-  quantity: number;
-  unitPrice: number;
-  discount: number;
-  taxRateId: string;
-  accountId: string;
-  locationId: string;
-  sourceType?: "quotation" | "delivery_note";
-  sourceDocumentId?: string;
-  sourceLineId?: string;
-  remaining?: number;
-  sourceDiscountPerUnit?: number;
-};
+import {
+  newLine,
+  productSelectionPatch,
+  savedLineAccount,
+  type BusinessDocumentKind as Kind,
+  type BusinessDocumentLine as Line,
+} from "@/lib/business-document-lines";
 const today = dubaiCalendarDate(),
   money = (x: unknown) =>
     new Intl.NumberFormat("en-AE", {
@@ -83,10 +74,11 @@ export function BusinessDocumentWorkflow({
             unitPrice: Number(x.unit_price),
             discount: Number(x.discount),
             taxRateId: x.tax_rate_id || "",
-            accountId:
-              x[
-                kind === "invoice" ? "revenue_account_id" : "expense_account_id"
-              ] || defaultAccount(result, kind),
+            accountId: savedLineAccount(
+              x[kind === "invoice" ? "revenue_account_id" : "expense_account_id"],
+              result,
+              kind,
+            ),
             locationId: x.inventory_location_id || "",
           })),
         );
@@ -106,7 +98,7 @@ export function BusinessDocumentWorkflow({
             if (!dirty.current.lines) setLines(sources.lines.map((x: any) => ({
               productId:x.product_id, description:x.description, quantity:x.remaining,
               unitPrice:Number(x.unit_price), discount:Number(x.discount)*Number(x.remaining)/Number(x.quantity), taxRateId:x.tax_rate_id||"",
-              accountId:x.revenue_account_id||defaultAccount(result,"invoice"),
+              accountId:savedLineAccount(x.revenue_account_id,result,"invoice"),
               locationId: result.locations.find((l:any)=>l.is_default)?.id || result.locations[0]?.id || "",
               sourceType:x.sourceType, sourceDocumentId:x.sourceDocumentId, sourceLineId:x.id, remaining:x.remaining,
               sourceDiscountPerUnit:Number(x.discount)/Number(x.quantity),
@@ -147,21 +139,7 @@ export function BusinessDocumentWorkflow({
     );
   };
   const chooseProduct = (index: number, productId: string) => {
-    const p = data.products.find((x) => x.id === productId),
-      tracked = p?.kind === "product" && p.track_inventory,
-      location = tracked
-        ? data.locations.find((x) => x.is_default)?.id ||
-          data.locations[0]?.id ||
-          ""
-        : "";
-    change(index, {
-      productId,
-      description: p?.name || "",
-      unitPrice:
-        Number(kind === "invoice" ? p?.sales_price : p?.purchase_price) || 0,
-      taxRateId: p?.tax_rate_id || "",
-      locationId: location,
-    });
+    change(index, productSelectionPatch(data, kind, productId));
   };
   const available = (line: Line) =>
     data.summary
@@ -390,7 +368,7 @@ export function BusinessDocumentWorkflow({
                   </select>
                 </label>
                 <label>
-                  Account (required)
+                  Account *
                   <select
                     aria-required="true"
                     value={line.accountId}
@@ -398,7 +376,7 @@ export function BusinessDocumentWorkflow({
                       change(index, { accountId: e.target.value })
                     }
                   >
-                    <option value="">Select an account</option>
+                    <option value="">Select account</option>
                     {accounts.map((x) => (
                       <option key={x.id} value={x.id}>
                         {x.name}
@@ -492,38 +470,4 @@ export function BusinessDocumentWorkflow({
       </section>
     </>
   );
-}
-function defaultAccount(data: BusinessDocumentData, kind: Kind) {
-  return (
-    data.accounts.find(
-      (x) =>
-        x.system_key ===
-        (kind === "invoice" ? "sales_revenue" : "rent_expense"),
-    )?.id ||
-    data.accounts.find((x) =>
-      kind === "invoice"
-        ? x.account_type === "income"
-        : ["expense", "asset"].includes(x.account_type),
-    )?.id ||
-    ""
-  );
-}
-function newLine(data: BusinessDocumentData, kind: Kind): Line {
-  const p = data.products[0],
-    tracked = p?.kind === "product" && p.track_inventory;
-  return {
-    productId: p?.id || "",
-    description: p?.name || "",
-    quantity: 1,
-    unitPrice:
-      Number(kind === "invoice" ? p?.sales_price : p?.purchase_price) || 0,
-    discount: 0,
-    taxRateId: p?.tax_rate_id || "",
-    accountId: defaultAccount(data, kind),
-    locationId: tracked
-      ? data.locations.find((x) => x.is_default)?.id ||
-        data.locations[0]?.id ||
-        ""
-      : "",
-  };
 }
