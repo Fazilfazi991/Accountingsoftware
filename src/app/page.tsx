@@ -1,7 +1,3 @@
-import { DemoApp } from "@/components/demo-app";
-import { requireOrganizationContext } from "@/lib/organization-context";
+import { TodayHome } from "@/components/today/today-home";
 
-export default async function Home() {
-  const context = await requireOrganizationContext();
-  return <DemoApp path={[]} context={context.payload} />;
-}
+export default function Home() { return <TodayHome route="/" />; }

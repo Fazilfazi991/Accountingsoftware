@@ -17,6 +17,8 @@ import { SignOutButton } from "@/components/sign-out-button";
 import type { OrganizationContextPayload } from "@/lib/organization-context";
 
 export type NavigationIcon =
+  | "home"
+  | "assistant"
   | "overview"
   | "sales"
   | "purchases"
@@ -52,6 +54,8 @@ function NavigationGlyph({ name }: { name: NavigationIcon }) {
     strokeLinejoin: "round" as const,
   };
   const paths: Record<NavigationIcon, ReactNode> = {
+    home: <><path d="m3 11 9-7 9 7v9H3z" /><path d="M9 20v-6h6v6" /></>,
+    assistant: <><path d="M4 5h16v12H8l-4 3z" /><path d="M8 10h8M8 13h5" /></>,
     overview: <path d="M3.5 3.5h7v7h-7zM13.5 3.5h7v4h-7zM13.5 10.5h7v10h-7zM3.5 13.5h7v7h-7z" />,
     sales: <><path d="M4 19V8.5L12 4l8 4.5V19" /><path d="M7.5 19v-6h9v6M8 9.5h.01M12 9.5h.01M16 9.5h.01" /></>,
     purchases: <><path d="M4 6h2l1.7 9.2h9.8l2-6.2H7" /><path d="M10 20h.01M17 20h.01" /></>,
@@ -65,7 +69,8 @@ function NavigationGlyph({ name }: { name: NavigationIcon }) {
 }
 
 const isActiveRoute = (route: string, href: string) =>
-  route === href || (href !== "/" && route.startsWith(`${href}/`));
+  route === href || (href === "/" && route === "/today") ||
+  (href !== "/" && route.startsWith(`${href}/`));
 
 const groupIsActive = (group: NavigationGroup, route: string) =>
   (group.href ? isActiveRoute(route, group.href) : false) ||
@@ -243,11 +248,12 @@ export function Sidebar({ groups, route, collapsed, onToggleCollapsed, onNavigat
   );
 }
 
-export function AppShell({ groups, route, children, topbar }: {
+export function AppShell({ groups, route, children, topbar, contentClassName }: {
   groups: readonly NavigationGroup[];
   route: string;
   children: ReactNode;
   topbar: ReactNode;
+  contentClassName?: string;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
@@ -306,7 +312,7 @@ export function AppShell({ groups, route, children, topbar }: {
           <button className="mobile-menu" aria-label="Open navigation" aria-expanded={menuOpen} onClick={() => setMenuOpen(true)} ref={menuButtonRef}><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16" /></svg></button>
           {topbar}<OrganizationSwitcher /><AccountMenu />
         </header>
-        <div className="content">{children}</div>
+        <div className={contentClassName ? `content ${contentClassName}` : "content"}>{children}</div>
       </main>
     </div>
   );

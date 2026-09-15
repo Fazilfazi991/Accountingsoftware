@@ -9,10 +9,12 @@ const prompts = ["What needs my attention today?", "Who owes me money?", "What b
   "How is this month going?", "Why is my cash lower?", "What happened yesterday?"];
 type Message = { id: number; question: string; response?: AssistantAnswer; error?: string };
 
-export function AssistantChat({ organization, branch }: { organization: string; branch: string }) {
+export function AssistantChat({ organization, branch, providerConfigured = false }: { organization: string; branch: string; providerConfigured?: boolean }) {
   const [messages, setMessages] = useState<Message[]>([]), [draft, setDraft] = useState(""), [pending, setPending] = useState(false);
   const sequence = useRef(0), scroll = useRef<HTMLDivElement>(null), input = useRef<HTMLTextAreaElement>(null);
-  useEffect(() => { scroll.current?.scrollTo({ top: scroll.current.scrollHeight, behavior: "smooth" }); }, [messages, pending]);
+  useEffect(() => {
+    if (messages.length > 0 || pending) scroll.current?.scrollTo({ top: scroll.current.scrollHeight, behavior: "smooth" });
+  }, [messages, pending]);
   async function send(question: string) {
     if (pending || question.trim().length < 2) return;
     const text = question.trim().slice(0, 500), id = ++sequence.current;
@@ -30,19 +32,20 @@ export function AssistantChat({ organization, branch }: { organization: string; 
     } finally { setPending(false); input.current?.focus(); }
   }
   function submit(event: FormEvent) { event.preventDefault(); void send(draft); }
-  return <main className={styles.page}>
+  return <div className={`${styles.page} ${styles.embedded}`}>
     <div className={styles.workspace}>
       <header className={styles.header}>
         <div><Link href="/" className={styles.back}>← Back to Ledgerly</Link>
           <span className={styles.eyebrow}>YOUR BUSINESS, IN CONTEXT</span>
-          <h1>Ledgerly Assistant</h1><p>Ask a question. See the recorded facts, calculation and next useful screen.</p></div>
+          <h1>Ask Ledgerly</h1><p>{providerConfigured ? "Ask about your business. See the recorded facts, calculation and next useful screen." : "Explore supported questions about your records. The guided planner cannot answer every free-form question."}</p>
+          <span className={styles.mobileIdentity}>{branch} · Read-only</span></div>
         <div className={styles.identity}><strong>{organization}</strong><span>{branch} · Read-only</span></div>
       </header>
       <div ref={scroll} className={styles.conversation} role="log" aria-label="Assistant conversation" aria-live="polite">
         {messages.length === 0 && <section className={styles.welcome}>
-          <span className={styles.trust}>Grounded in your Ledgerly records</span>
+          <span className={styles.trust}>{providerConfigured ? "Grounded in your Ledgerly records" : "Guided, read-only financial questions"}</span>
           <h2>What would you like to understand?</h2>
-          <p>Answers come from selected-branch accounting reports, not guessed figures. If data is missing, I’ll say so.</p>
+          <p>Answers come from selected-branch accounting reports, not guessed figures. {providerConfigured ? "If data is missing, I’ll say so." : "Try the suggested prompts or ask about cash, receivables, bills, profit, VAT and transactions. Unsupported questions get a clear limitation."}</p>
           <div className={styles.prompts}>{prompts.map((prompt) => <button type="button" key={prompt} onClick={() => void send(prompt)}>{prompt}<span aria-hidden="true">↗</span></button>)}</div>
         </section>}
         {messages.map((m) => <div className={styles.exchange} key={m.id}>
@@ -61,7 +64,7 @@ export function AssistantChat({ organization, branch }: { organization: string; 
         <small>Read-only · Ledgerly never changes your records here.</small>
       </form>
     </div>
-  </main>;
+  </div>;
 }
 
 function AnswerCard({ response, onPrompt }: { response: AssistantAnswer; onPrompt: (prompt: string) => void }) {

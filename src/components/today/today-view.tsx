@@ -12,8 +12,8 @@ export function TodayView({ data }: { data: TodayData }) {
   const hour = Number(greeting);
   const dayLabel = new Intl.DateTimeFormat("en-GB", { dateStyle: "full", timeZone: "UTC" }).format(new Date(`${data.today}T12:00:00Z`));
   const displayName = /@|(?:-[a-z0-9]+){3,}/i.test(data.name) ? "there" : data.name;
-  return <main className={styles.page}>
-    <div className={styles.topline}><Link href="/" className={styles.brand}>Ledgerly <span>/ Today</span></Link><span>{data.organization} · {data.branch}</span><Link href="/" className={styles.back}>Dashboard ↗</Link></div>
+  return <div className={styles.page}>
+    <div className={styles.topline}><Link href="/" className={styles.brand}>Ledgerly <span>/ Today</span></Link><span>{data.organization} · {data.branch}</span><Link href="/overview" className={styles.back}>Financial Overview ↗</Link></div>
     <header className={styles.header}><div className={styles.headerCopy}><h1>Good {hour < 12 ? "morning" : hour < 17 ? "afternoon" : "evening"}, {displayName}</h1>
       <p>{data.status}</p><small className={styles.scope}>{dayLabel} <span aria-hidden="true">·</span> {data.organization} / {data.branch}</small></div><div className={styles.headerRight}>{data.health && data.hasData && <div className={styles.health} aria-label={`Business health ${data.health.score} out of 100, ${data.health.label}`}>
         <span>Business health</span><b>{data.health.score}<small>/100</small></b><strong>{data.health.label}</strong></div>}</div></header>
@@ -61,5 +61,5 @@ export function TodayView({ data }: { data: TodayData }) {
               <time dateTime={item.due_date || undefined}>{item.due_date === data.today ? "Today" : item.due_date}</time><span><b>{item.kind}</b><small>{item.party_name} · {item.document_number}</small></span><strong>{m(item.outstanding)}</strong></Link>)}</div>}</section>
     </div>
     <section className={styles.quick} aria-labelledby="quick-title"><h2 id="quick-title">Quick create</h2><div>{[["Invoice", "/sales/invoices/new"], ["Quotation", "/sales/quotations/new"], ["Expense", "/expenses/new"], ["Bill", "/purchases/bills/new"], ["Payment received", "/sales/customer-payments"], ["Customer", "/sales/customers/new"]].map(([label, href]) => <Link key={href} href={href}>{label} <span>＋</span></Link>)}</div></section>
-  </main>;
+  </div>;
 }

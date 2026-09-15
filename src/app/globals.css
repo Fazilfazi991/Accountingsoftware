@@ -294,3 +294,6 @@ body,.main{overflow-x:hidden}.app,.content,.dashboard-grid,.panel{min-width:0}
   .mobile-nav-chevron { transition: none; }
   .nav-flyout { animation: none; }
 }
+
+/* Today and Assistant inherit the current rail/topbar without the accounting-page inset. */
+.product-content { max-width: none; padding: 0; min-height: 0; }
