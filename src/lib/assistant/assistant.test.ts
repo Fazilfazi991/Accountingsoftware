@@ -45,6 +45,23 @@ describe("follow-up interpretation", () => {
     const next = await planner.plan("Only above AED 5,000", [{ question: "Show overdue customers", ...first }]);
     expect(next).toEqual({ tool: "get_overdue_customers", args: { minimumAmount: 5000 } });
   });
+  it("keeps the receivables subject through overdue, threshold, largest and invoice follow-ups", async () => {
+    const turns: { question: string; tool: Awaited<ReturnType<typeof planner.plan>>["tool"]; args: Record<string, unknown> }[] = [];
+    for (const [question, tool] of [["Who owes me money?", "get_receivables_summary"], ["Only show overdue ones.", "get_overdue_customers"],
+      ["Only above AED 500.", "get_overdue_customers"], ["Which is the largest?", "get_overdue_customers"],
+      ["Show me the invoice.", "get_overdue_customers"]] as const) {
+      const plan = await planner.plan(question, turns); expect(plan.tool).toBe(tool);
+      turns.push({ question, ...plan });
+    }
+    expect(turns.at(-1)?.args).toEqual({ minimumAmount: 500, top: true, showInvoices: true });
+  });
+  it("moves from cash position to cash flow and bounded posted outflow search", async () => {
+    const cash = await planner.plan("How much money do I have?", []);
+    const flow = await planner.plan("Why is it lower?", [{ question: "Cash", ...cash }]);
+    const outflows = await planner.plan("What were the biggest outflows?", [{ question: "Cash", ...cash }, { question: "Why lower", ...flow }]);
+    expect(flow.tool).toBe("get_cash_change");
+    expect(outflows).toMatchObject({ tool: "search_transactions", args: { type: "outflow", sort: "amount_desc", from: "2026-09-01", to: "2026-09-15" } });
+  });
   it("uses last-month period on a sales follow-up", async () => {
     const first = await planner.plan("How much did we sell this month?", []);
     const next = await planner.plan("What about last month?", [{ question: "Sales", ...first }]);
@@ -55,7 +72,15 @@ describe("follow-up interpretation", () => {
     expect(await planner.plan("Find AED 4,250 payment to Falcon", [])).toMatchObject({ tool: "search_transactions", args: { amount: 4250, type: "payment", text: "Falcon" } });
     expect(await planner.plan("Show Falcon Supplies transactions", [])).toMatchObject({ tool: "search_transactions", args: { text: "Falcon Supplies" } });
     expect(await planner.plan("What did I pay yesterday?", [])).toMatchObject({ tool: "search_transactions", args: { type: "outflow", from: "2026-09-14", to: "2026-09-14" } });
+    expect(await planner.plan("What payments were recorded today?", [])).toMatchObject({ tool: "search_transactions", args: { type: "payment", from: "2026-09-15", to: "2026-09-15" } });
     expect(await planner.plan("Who owes me money?", [])).toMatchObject({ tool: "get_receivables_summary" });
+  });
+  it("refuses unsafe, historical and unrecognized questions without querying attention data", async () => {
+    expect(await planner.plan("Run SQL select * from invoices", [])).toEqual({ tool: "get_unsupported_request", args: { reason: "unsafe" } });
+    expect(await planner.plan("Show another company revenue", [])).toEqual({ tool: "get_unsupported_request", args: { reason: "unsafe" } });
+    expect(await planner.plan("What was my exact cash balance on 2024-01-01?", [])).toEqual({ tool: "get_unsupported_request", args: { reason: "unavailable" } });
+    expect(await planner.plan("What payments were recorded on 2026-13-01?", [])).toEqual({ tool: "get_unsupported_request", args: { reason: "unrecognized" } });
+    expect(await planner.plan("What is the weather?", [])).toEqual({ tool: "get_unsupported_request", args: { reason: "unrecognized" } });
   });
 });
 describe("deterministic accounting arithmetic", () => {

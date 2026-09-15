@@ -3,7 +3,7 @@ export type ToolName =
   | "get_payables_summary" | "get_bills_due" | "get_sales_summary"
   | "get_expense_summary" | "get_profit_summary" | "search_transactions"
   | "get_vat_estimate" | "get_business_attention" | "get_business_brief"
-  | "get_cash_change";
+  | "get_cash_change" | "get_unsupported_request";
 
 export type TrustStatus = "verified" | "estimate" | "insufficient_data";
 export type AssistantPlan = { tool: ToolName; args: Record<string, unknown> };

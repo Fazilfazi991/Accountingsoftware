@@ -70,13 +70,13 @@ async function searchTransactions(client: Client, context: AuthContext, args: Re
       const reference = String(record.reference || ""), document = String(record[s.number] || "");
       return { type: s.type, label: `${s.type[0].toUpperCase()}${s.type.slice(1)} ${document}`, detail: `${String(record[s.date])} · ${party || "Recorded transaction"}`,
         amount: money(record[s.amount], context.organization.base_currency), href: safeLink(s.root, String(record.id)),
-        searchable: `${party} ${reference} ${document}`.toLowerCase(), date: String(record[s.date]) };
+        searchable: `${party} ${reference} ${document}`.toLowerCase(), date: String(record[s.date]), numericAmount: number(record[s.amount]) };
     }).filter((r) => !text || r.searchable.includes(text.toLowerCase()));
     return { found, truncated };
   }));
   if (matches.some((match) => match.truncated)) return insufficient("That search covers more than the safe result window. Narrow it by amount or date so I don't miss a record.", "search_transactions");
-  const rows = matches.flatMap((m) => m.found).sort((a, b) => b.date.localeCompare(a.date)).slice(0, number(args.limit || 10));
-  const answer = base("search_transactions", rows.length ? `I found ${rows.length} posted transaction${rows.length === 1 ? "" : "s"} matching your filters.` : "No posted transactions matched those filters.");
+  const rows = matches.flatMap((m) => m.found).sort((a, b) => args.sort === "amount_desc" ? b.numericAmount - a.numericAmount : b.date.localeCompare(a.date)).slice(0, number(args.limit || 10));
+  const answer = base("search_transactions", rows.length ? `I found ${rows.length} posted transaction${rows.length === 1 ? "" : "s"} matching your filters.${args.type === "outflow" ? " This includes supplier payments and expenses, not every possible cash journal movement." : ""}` : "No posted transactions matched those filters.");
   answer.rows = rows.map(({ label, detail, amount, href }) => ({ label, detail, amount, ...(href ? { href } : {}) }));
   answer.sources = ["Posted Ledgerly documents in the selected branch; drafts and voids excluded."];
   answer.followUpSuggestions = ["What happened yesterday?"];
@@ -87,6 +87,10 @@ async function run(plan: AssistantPlan, client: Client, context: AuthContext): P
   const a = plan.args, today = dubaiCalendarDate(), currency = context.organization.base_currency;
   let result: AssistantAnswer;
   switch (plan.tool) {
+    case "get_unsupported_request": return insufficient(a.reason === "unsafe" ?
+      "Assistant V1 cannot run SQL, change records, or access another company or branch. Ask about your selected business instead." :
+      a.reason === "unavailable" ? "I don't have enough recorded data to answer that historical question reliably." :
+      "I can't reliably interpret that request. Try a specific question about your selected business.", plan.tool);
     case "get_cash_position": {
       const d = await dashboard(client, context);
       result = base(plan.tool, "Your recorded cash and bank position, based on posted journal balances.");
@@ -110,10 +114,22 @@ async function run(plan: AssistantPlan, client: Client, context: AuthContext): P
           overdueDays: Math.max(existing?.overdueDays || 0, overdueDays) }); }
       const parties = plan.tool === "get_overdue_customers" ? overdueParties.map((p) => ({ ...p, overdueDays: p.oldest })) :
         [...balances.values()].sort((x, y) => y.amount - x.amount);
+      if (plan.tool === "get_overdue_customers" && a.showInvoices) {
+        const selected = parties.slice(0, a.top ? 1 : 10), ids = new Set(selected.map((p) => p.id));
+        const invoices = current.overdue.filter((item) => ids.has(item.party_id)).sort((x, y) => number(y.outstanding) - number(x.outstanding));
+        result = base(plan.tool, selected.length ? "These are the posted overdue invoices for the selected customer, using remaining open balances." : "No overdue customer matches that filter.");
+        result.facts = [{ label: "Selected overdue balance", value: money(selected.reduce((sum, p) => sum + p.amount, 0), currency) }];
+        result.rows = invoices.slice(0, 10).map((item) => ({ label: item.document_number, detail: `${item.party_name} · due ${item.due_date || item.document_date}`,
+          amount: money(item.outstanding, currency), ...safeLink("/sales/invoices", item.document_id) ? { href: safeLink("/sales/invoices", item.document_id)! } : {} }));
+        result.sources = ["Accounts Receivable open-item report · posted overdue invoices and remaining balances in the selected branch."];
+        result.actions = link("View receivables", "/reports/accounts-receivable"); return result;
+      }
       result = base(plan.tool, plan.tool === "get_overdue_customers" ? "Customers with recorded overdue open balances." : "Here is what customers currently owe, based on unsettled posted open items.");
-      result.facts = [{ label: "Outstanding", value: money(all, currency) }, { label: "Overdue", value: money(overdue, currency) }];
-      result.calculation = [{ label: "Current open balance", value: money(all - overdue, currency) }, { label: "Overdue open balance", value: money(overdue, currency) }, { label: "Outstanding", value: money(all, currency) }];
-      result.rows = parties.slice(0, 10).map((p) => ({ label: p.party, detail: p.overdueDays ? `Oldest item ${p.overdueDays} days overdue` : "Not yet overdue",
+      result.facts = a.top && plan.tool === "get_overdue_customers" ? [{ label: "Largest overdue customer", value: money(parties[0]?.amount || 0, currency) }] :
+        [{ label: "Outstanding", value: money(all, currency) }, { label: "Overdue", value: money(overdue, currency) }];
+      result.calculation = a.top && plan.tool === "get_overdue_customers" ? [{ label: "Largest selected overdue balance", value: money(parties[0]?.amount || 0, currency) }] :
+        [{ label: "Current open balance", value: money(all - overdue, currency) }, { label: "Overdue open balance", value: money(overdue, currency) }, { label: "Outstanding", value: money(all, currency) }];
+      result.rows = parties.slice(0, a.top ? 1 : 10).map((p) => ({ label: p.party, detail: p.overdueDays ? `Oldest item ${p.overdueDays} days overdue` : "Not yet overdue",
         amount: money(p.amount, currency), ...safeLink("/sales/customers", p.id) ? { href: safeLink("/sales/customers", p.id)! } : {} }));
       result.sources = ["Accounts Receivable open-item report · remaining amounts on posted documents, as of today."];
       result.actions = link("View receivables", "/reports/accounts-receivable"); result.followUpSuggestions = ["Only above AED 5,000"];

@@ -8,14 +8,14 @@ const due = z.object({ from: date, to: date, minimumAmount: z.number().finite().
   .refine((p) => p.from <= p.to && (Date.parse(p.to) - Date.parse(p.from)) <= 366 * 86400000, "Invalid date range");
 const search = z.object({ text: z.string().trim().min(2).max(80).optional(), amount: z.number().finite().positive().max(1e9).optional(),
   from: date.optional(), to: date.optional(), type: z.enum(["invoice", "bill", "expense", "receipt", "payment", "outflow"]).optional(),
-  limit: z.number().int().min(1).max(20).default(10) }).strict()
+  sort: z.enum(["date_desc", "amount_desc"]).optional(), limit: z.number().int().min(1).max(20).default(10) }).strict()
   .refine((p) => Boolean(p.text || p.amount || p.from || p.to), "Add a search filter")
   .refine((p) => !p.from || !p.to || (p.from <= p.to && Date.parse(p.to) - Date.parse(p.from) <= 366 * 86400000), "Invalid date range");
 
 export const toolSchemas = {
   get_cash_position: z.object({}).strict(),
   get_receivables_summary: z.object({}).strict(),
-  get_overdue_customers: z.object({ minimumAmount: z.number().finite().min(0).max(1e9).optional() }).strict(),
+  get_overdue_customers: z.object({ minimumAmount: z.number().finite().min(0).max(1e9).optional(), top: z.boolean().optional(), showInvoices: z.boolean().optional() }).strict(),
   get_payables_summary: z.object({}).strict(),
   get_bills_due: due,
   get_sales_summary: period,
@@ -26,6 +26,7 @@ export const toolSchemas = {
   get_business_attention: z.object({}).strict(),
   get_business_brief: z.object({ from: date, to: date }).strict().refine((p) => p.from <= p.to && Date.parse(p.to) - Date.parse(p.from) <= 31 * 86400000),
   get_cash_change: period,
+  get_unsupported_request: z.object({ reason: z.enum(["unavailable", "unsafe", "unrecognized"]) }).strict(),
 } as const;
 
 export function validatePlan(value: unknown): AssistantPlan {
