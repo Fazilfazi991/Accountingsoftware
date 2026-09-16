@@ -7,11 +7,12 @@ type BrandLogoProps = {
 };
 
 const sources = {
-  transparent: "/brand/fynta_without_tagline_transparent.png",
-  dark: "/brand/fynta_without_tagline_dark_background.png",
-  light: "/brand/fynta_without_tagline_white_background.png",
+  transparent: { src: "/brand/fynta_without_tagline_transparent.png", width: 1254, height: 1254 },
+  dark: { src: "/brand/fynta_wordmark_light_transparent.png", width: 889, height: 332 },
+  light: { src: "/brand/fynta_without_tagline_white_background.png", width: 1254, height: 1254 },
 } as const;
 
 export function BrandLogo({ variant = "transparent", className, priority = false }: BrandLogoProps) {
-  return <Image className={className} src={sources[variant]} alt="FYNTA" width={1250} height={1250} priority={priority} />;
+  const source = sources[variant];
+  return <Image className={className} src={source.src} alt="FYNTA" width={source.width} height={source.height} priority={priority} />;
 }
