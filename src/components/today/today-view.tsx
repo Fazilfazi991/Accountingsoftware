@@ -13,9 +13,8 @@ export function TodayView({ data }: { data: TodayData }) {
   const dayLabel = new Intl.DateTimeFormat("en-GB", { dateStyle: "full", timeZone: "UTC" }).format(new Date(`${data.today}T12:00:00Z`));
   const displayName = /@|(?:-[a-z0-9]+){3,}/i.test(data.name) ? "there" : data.name;
   return <div className={styles.page}>
-    <div className={styles.topline}><Link href="/" className={styles.brand}>Ledgerly <span>/ Today</span></Link><span>{data.organization} · {data.branch}</span><Link href="/overview" className={styles.back}>Financial Overview ↗</Link></div>
     <header className={styles.header}><div className={styles.headerCopy}><h1>Good {hour < 12 ? "morning" : hour < 17 ? "afternoon" : "evening"}, {displayName}</h1>
-      <p>{data.status}</p><small className={styles.scope}>{dayLabel} <span aria-hidden="true">·</span> {data.organization} / {data.branch}</small></div><div className={styles.headerRight}>{data.health && data.hasData && <div className={styles.health} aria-label={`Business health ${data.health.score} out of 100, ${data.health.label}`}>
+      <p>{data.status}</p><small className={styles.scope}>{dayLabel}</small></div><div className={styles.headerRight}><Link href="/overview" className={styles.back}>Financial Overview ↗</Link>{data.health && data.hasData && <div className={styles.health} aria-label={`Business health ${data.health.score} out of 100, ${data.health.label}`}>
         <span>Business health</span><b>{data.health.score}<small>/100</small></b><strong>{data.health.label}</strong></div>}</div></header>
     {data.warnings.length > 0 && <div className={styles.warning} role="status"><b>Some figures are unavailable.</b> {data.warnings.join(" ")}</div>}
     {!data.hasData && data.warnings.length === 0 && <div className={styles.empty}>Once you post an invoice, payment, bill, or expense, Today will highlight your financial position and next actions.</div>}

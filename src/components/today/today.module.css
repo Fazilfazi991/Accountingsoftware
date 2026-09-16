@@ -86,3 +86,13 @@
 @media(max-width:700px){.page{padding:13px 16px 30px;display:flex;flex-direction:column}.header{align-items:flex-start;flex-direction:column;padding:20px 0 17px;gap:13px}.header h1{font-size:30px}.header p{font-size:14px}.health{padding:9px 12px}.health b{font-size:20px}.moneySection{padding:15px 13px 10px}.moneyGrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.metric{min-height:101px;padding:10px}.metric.cash{grid-column:1/-1;min-height:88px;padding:12px 14px}.metric.cash strong{font-size:27px}.metric:not(.cash) strong{font-size:19px}.metric.projected{grid-column:1/-1;min-height:75px;display:grid;grid-template-columns:1fr auto;align-items:center}.metric.projected>small{grid-column:1/-1}.moneyNote{line-height:1.35}.contentGrid{display:contents}.contentGrid>.panel{margin-top:11px}.attention{order:4}.recommendation{order:5}.contentGrid>.panel:nth-child(4){order:6}.contentGrid>.panel:nth-child(3){order:7}.contentGrid>.panel:nth-child(5){order:8}.quick{order:9;margin-top:15px}.activityGrid{grid-template-columns:repeat(2,minmax(0,1fr))}.quick>div{grid-template-columns:repeat(2,minmax(0,1fr))}.actionRow{min-height:76px}.rowText b{white-space:normal}.actionRow strong{font-size:12px}.scope{font-size:10px}.metric a{min-height:44px}.panelHead a{min-height:44px}}
 @media(max-width:390px){.page{padding-left:12px;padding-right:12px}.header h1{font-size:27px}.health{gap:7px}.health span{font-size:10px}.health strong{font-size:10px;padding:4px 6px}.metric:not(.cash) strong{font-size:16px}.metric.projected strong{font-size:20px}.actionRow{gap:7px}.marker{min-width:48px;padding:7px 5px}.timeline a{grid-template-columns:55px minmax(0,1fr) auto;gap:5px}}
 @media(max-width:700px){.contentGrid>.panel.recommendation{order:5}}
+
+/* Keep the workspace context in the app bar; put Today’s decision surface first. */
+.page{width:min(1480px,100%);padding:20px clamp(18px,2.4vw,34px) 38px}
+.header{padding:14px 0 19px;align-items:center}
+.header h1{font-size:clamp(29px,2.8vw,38px);letter-spacing:-.035em}
+.scope{margin-top:8px}
+.headerRight{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:12px}
+.headerRight .back{min-height:44px;display:inline-flex;align-items:center;color:#145e71;font-size:12px;font-weight:750;white-space:nowrap}
+@media(max-width:700px){.page{padding:13px 16px 30px}.header{align-items:flex-start;gap:8px;padding:13px 0 17px}.headerRight{justify-content:flex-start}}
+@media(max-width:390px){.page{padding-left:12px;padding-right:12px}}

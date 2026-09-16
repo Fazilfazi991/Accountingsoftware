@@ -298,3 +298,11 @@ body,.main{overflow-x:hidden}.app,.content,.dashboard-grid,.panel{min-width:0}
 /* Today and Assistant inherit the current rail/topbar without the accounting-page inset. */
 .product-content { max-width: none; padding: 0; min-height: 0; }
 .table-wrap tr.customer-deep-link td { background: #eaf4ec; }
+.topbar-page-name { flex: 0 0 auto; color: #173a43; font-size: 16px; font-weight: 800; letter-spacing: -.025em; text-decoration: none; }
+.topbar-page-name span { color: #61788b; font-weight: 500; }
+.topbar-page-name:focus-visible { outline: 3px solid #2969d8; outline-offset: 4px; border-radius: 4px; }
+.context-switchers { min-width: 0; }
+.context-label { max-width: min(32vw, 360px); overflow: hidden; text-overflow: ellipsis; }
+.account-popover { width: min(270px, calc(100vw - 24px)); padding: 16px; gap: 8px; border-radius: 12px; }
+.account-popover b { min-width: 0; font-size: 14px; line-height: 1.3; overflow-wrap: anywhere; }
+@media (max-width: 760px) { .topbar-page-name { font-size: 14px; } }

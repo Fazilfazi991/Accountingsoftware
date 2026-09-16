@@ -109,10 +109,10 @@ export function OrganizationSwitcher() {
     <div className="context-switchers">
       {organizations.length > 1 ? (
         <label><span className="sr-only">Organization</span><select aria-label="Organization" value={organization.id} onChange={(event) => switchOrganization(event.target.value)}>{organizations.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
-      ) : <span className="context-label">{organization.name}</span>}
+      ) : <span className="context-label" title={organization.name}>{organization.name}</span>}
       {branches.length > 1 ? (
         <label><span className="sr-only">Branch</span><select aria-label="Branch" value={branch.id} onChange={(event) => switchBranch(event.target.value)}>{branches.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
-      ) : <span className="context-label muted">{branch.name}</span>}
+      ) : <span className="context-label muted" title={branch.name}>{branch.name}</span>}
     </div>
   );
 }
