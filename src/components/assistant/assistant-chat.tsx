@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import type { AssistantAnswer, ConversationTurn } from "@/lib/assistant/types";
 import { actionRegistry, type ActionId } from "@/lib/assistant/action-registry";
 import { GuidedInvoice } from "./guided-invoice";
@@ -22,13 +22,11 @@ const secondarySuggestions = [
 ] as const;
 type Message = { id: number; question: string; response?: AssistantAnswer; error?: string; notice?: string };
 
-export function AssistantChat({ organization, branch, providerConfigured = false, allowed }: {
-  organization: string; branch: string; providerConfigured?: boolean; allowed: Record<string, boolean>;
-}) {
+export function AssistantChat({ allowed }: { allowed: Record<string, boolean> }) {
   const [messages, setMessages] = useState<Message[]>([]), [draft, setDraft] = useState(""), [pending, setPending] = useState(false),
     [activeAction, setActiveAction] = useState<ActionId | null>(null), [handoffCustomerId, setHandoffCustomerId] = useState<string>(),
     [switchPrompt, setSwitchPrompt] = useState<{ target: ActionId; customerId?: string } | null>(null),
-    [customerOrigin, setCustomerOrigin] = useState<ActionId | null>(null), [historyOpen, setHistoryOpen] = useState(false);
+    [customerOrigin, setCustomerOrigin] = useState<ActionId | null>(null);
   const sequence = useRef(0), scroll = useRef<HTMLDivElement>(null), input = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
     if (messages.length > 0 || pending) scroll.current?.scrollTo({ top: scroll.current.scrollHeight, behavior: "smooth" });
@@ -44,11 +42,16 @@ export function AssistantChat({ organization, branch, providerConfigured = false
     else startAction(target, customerId);
   }
   function closeAction() { setActiveAction(null); setSwitchPrompt(null); setHandoffCustomerId(undefined); setCustomerOrigin(null); }
-  function resetConversation() {
+  const resetConversation = useCallback(() => {
     if (pending || activeAction) return;
-    setMessages([]); setDraft(""); setHistoryOpen(false);
+    setMessages([]); setDraft("");
     requestAnimationFrame(() => input.current?.focus());
-  }
+  }, [pending, activeAction]);
+  useEffect(() => {
+    const handler = () => { if (!pending && !activeAction) resetConversation(); };
+    window.addEventListener("ledgerly:new-conversation", handler);
+    return () => window.removeEventListener("ledgerly:new-conversation", handler);
+  }, [pending, activeAction, resetConversation]);
   async function send(question: string) {
     if (pending || activeAction || question.trim().length < 2) return;
     const text = question.trim().slice(0, 500), id = ++sequence.current;
@@ -81,25 +84,6 @@ export function AssistantChat({ organization, branch, providerConfigured = false
   function submit(event: FormEvent) { event.preventDefault(); void send(draft); }
   return <div className={`${styles.page} ${styles.embedded}`}>
     <div className={styles.workspace}>
-      <header className={styles.header}>
-        <div className={styles.headerMain}>
-          <h1>Ask Ledgerly</h1>
-          <span className={styles.context}>{organization} · {branch}</span>
-        </div>
-        <div className={styles.headerActions}>
-          <div className={styles.historyWrap}>
-            <button type="button" className={styles.headerButton} aria-expanded={historyOpen}
-              aria-controls="assistant-history" onClick={() => setHistoryOpen((open) => !open)}>History</button>
-            {historyOpen && <div id="assistant-history" className={styles.historyPopover} role="status">
-              <strong>Current session</strong><span>{messages.length ? `${messages.length} ${messages.length === 1 ? "question" : "questions"}` : "No questions yet"}</span>
-              <small>Conversation history is kept in this session.</small>
-            </div>}
-          </div>
-          <button type="button" className={styles.newConversation} onClick={resetConversation} disabled={pending || Boolean(activeAction)}>
-            New conversation
-          </button>
-        </div>
-      </header>
       <div ref={scroll} className={styles.conversation} role="log" aria-label="Assistant conversation" aria-live="polite">
         {activeAction === "create_invoice_draft" && <GuidedInvoice key={`${activeAction}:${handoffCustomerId || ""}`}
           onClose={closeAction} onSwitch={requestSwitch} allowed={allowed} initialCustomerId={handoffCustomerId} />}
@@ -120,6 +104,7 @@ export function AssistantChat({ organization, branch, providerConfigured = false
         </div></div>}
         {!activeAction && messages.length === 0 && <section className={styles.welcome}>
           <div className={styles.welcomeMark} aria-hidden="true">L</div>
+          <h1 className={styles.chatTitle}>Ask Ledgerly</h1>
           <h2>What can I help you with?</h2>
           <p>Ask about your business or tell me what you&apos;d like to do.</p>
           <div className={styles.primarySuggestions}>
@@ -140,7 +125,6 @@ export function AssistantChat({ organization, branch, providerConfigured = false
               </button>;
             })}
           </div>
-          <span className={styles.trust}>{providerConfigured ? "Grounded in Ledgerly records" : "Guided financial assistant · no AI required"}</span>
         </section>}
         {!activeAction && messages.map((m) => <div className={styles.exchange} key={m.id}>
           <div className={styles.userMessage}>{m.question}</div>
@@ -152,12 +136,12 @@ export function AssistantChat({ organization, branch, providerConfigured = false
       </div>
       {!activeAction ? <form className={styles.composer} onSubmit={submit}>
         <label htmlFor="assistant-question" className={styles.srOnly}>Ask Ledgerly</label>
+        <span className={styles.composerSparkle} aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m12 2 1.7 6.3L20 10l-6.3 1.7L12 18l-1.7-6.3L4 10l6.3-1.7z" /><path d="m19 16 .7 2.3L22 19l-.7-2.3L19 22l-.7-2.3L16 19l2.3-.7z" /></svg></span>
         <textarea ref={input} id="assistant-question" value={draft} onChange={(event) => setDraft(event.target.value)}
+          onInput={(event) => { const element = event.currentTarget; element.style.height = "auto"; element.style.height = `${Math.min(element.scrollHeight, 150)}px`; }}
           onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void send(draft); } }}
-          maxLength={500} rows={1} placeholder="Ask Ledgerly about your business…" />
-        <button type="submit" aria-label={pending ? "Checking" : "Send message"} disabled={pending || draft.trim().length < 2}><span aria-hidden="true">↑</span></button>
-        <small className={styles.composerMeta}><span>Enter to send · Shift+Enter for a new line</span>
-          <span className={styles.composerHint}>Answers are read-only · writes require your confirmation</span></small>
+          maxLength={500} rows={1} placeholder="Ask Ledgerly anything..." />
+        <button type="submit" aria-label={pending ? "Checking" : "Send message"} disabled={pending || draft.trim().length < 2}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 14-7-3 14-4-5-7-2Z" /><path d="m12 14 7-9" /></svg></button>
       </form> : <div className={styles.actionFooter}>Guided {actionRegistry[activeAction].label} ·
         No record is created until you explicitly confirm its preview.</div>}
     </div>

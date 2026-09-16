@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import styles from "./general-chat.module.css";
 
 type Message = { id: number; role: "user" | "assistant"; content: string; pending?: boolean; error?: string };
@@ -10,18 +10,10 @@ const starters = [
   ["Summarize information", "Summarize information"],
   ["Help me plan", "Help me plan"],
 ] as const;
-const recent = [
-  ["New conversation", "Just now"],
-  ["Writing a clear project update", "Yesterday"],
-  ["Plan a weekend trip", "Sep 14, 2026"],
-  ["Explain compound interest", "Sep 12, 2026"],
-] as const;
-
 export function GeneralChat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState("");
   const [pending, setPending] = useState(false);
-  const [historyOpen, setHistoryOpen] = useState(false);
   const sequence = useRef(0);
   const scroll = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLTextAreaElement>(null);
@@ -30,11 +22,16 @@ export function GeneralChat() {
     if (messages.length || pending) scroll.current?.scrollTo({ top: scroll.current.scrollHeight, behavior: "smooth" });
   }, [messages, pending]);
 
-  function resetConversation() {
+  const resetConversation = useCallback(() => {
     if (pending) return;
-    setMessages([]); setDraft(""); setHistoryOpen(false);
+    setMessages([]); setDraft("");
     requestAnimationFrame(() => input.current?.focus());
-  }
+  }, [pending]);
+  useEffect(() => {
+    const handler = () => resetConversation();
+    window.addEventListener("ledgerly:new-conversation", handler);
+    return () => window.removeEventListener("ledgerly:new-conversation", handler);
+  }, [resetConversation]);
   async function send(value: string) {
     if (pending || value.trim().length < 2) return;
     const content = value.trim().slice(0, 1200), id = ++sequence.current;
@@ -54,23 +51,12 @@ export function GeneralChat() {
 
   return <div className={styles.page}>
     <div className={styles.workspace}>
-      <aside className={`${styles.historySidebar} ${historyOpen ? styles.historyOpen : ""}`} aria-label="General conversations">
-        <div className={styles.historyHeading}><h2>Conversations</h2><button type="button" aria-label="New conversation" onClick={resetConversation}>＋</button></div>
-        <div className={styles.historyList}>{recent.map(([title, date], index) => <button type="button" key={title} className={`${styles.historyItem} ${index === 0 ? styles.historyCurrent : ""}`} onClick={() => index === 0 ? resetConversation() : undefined}>
-          <strong>{title}</strong><small>{date}</small>
-        </button>)}</div>
-      </aside>
-      {historyOpen && <button type="button" className={styles.historyBackdrop} aria-label="Close conversations" onClick={() => setHistoryOpen(false)} />}
       <main className={styles.main}>
-        <header className={styles.header}>
-          <div><h1>Ask General</h1><p>Write, explain, brainstorm, plan, summarize, or ask anything.</p></div>
-          <div className={styles.headerActions}><button type="button" className={styles.historyButton} onClick={() => setHistoryOpen((open) => !open)} aria-expanded={historyOpen}>History</button><button type="button" className={styles.newButton} onClick={resetConversation} disabled={pending}>New conversation</button></div>
-        </header>
         <div ref={scroll} className={styles.conversation} role="log" aria-label="General conversation" aria-live="polite">
-          {messages.length === 0 && <section className={styles.empty}><div className={styles.emptyIntro}><div className={styles.avatar} aria-hidden="true">L</div><div><h2>Hi, what can I help you with?</h2><p>Ask me anything, or choose a starting point below.</p></div></div><div className={styles.starterRow}>{starters.map(([label, prompt]) => <button type="button" key={label} onClick={() => void send(prompt)}>{label}<span aria-hidden="true">→</span></button>)}</div></section>}
+          {messages.length === 0 && <section className={styles.empty}><div className={styles.emptyIntro}><div className={styles.avatar} aria-hidden="true">L</div><div><h1>Ask General</h1><p>Ask questions, get explanations, and work through everyday tasks.</p></div></div><div className={styles.starterRow}>{starters.map(([label, prompt]) => <button type="button" key={label} onClick={() => void send(prompt)}>{label}<span aria-hidden="true">→</span></button>)}</div></section>}
           {messages.map((message) => <div className={message.role === "user" ? styles.userRow : styles.assistantRow} key={message.id}><div className={message.role === "assistant" ? styles.assistantAvatar : styles.userAvatar} aria-hidden="true">{message.role === "assistant" ? "L" : "You"}</div><div className={styles.message}>{message.pending ? <span className={styles.typing}>Thinking<span>·</span><span>·</span><span>·</span></span> : message.error ? <span role="alert" className={styles.error}>{message.error} <button type="button" onClick={() => void send(messages.find((item) => item.role === "user")?.content || "Help me try again")}>Retry</button></span> : <GeneralText content={message.content} />}</div></div>)}
         </div>
-        <form className={styles.composer} onSubmit={submit}><label htmlFor="general-question" className={styles.srOnly}>Ask General</label><span className={styles.composerSparkle} aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m12 2 1.7 6.3L20 10l-6.3 1.7L12 18l-1.7-6.3L4 10l6.3-1.7z" /><path d="m19 16 .7 2.3L22 19l-2.3.7L19 22l-.7-2.3L16 19l2.3-.7z" /></svg></span><textarea ref={input} id="general-question" value={draft} onChange={(event) => setDraft(event.target.value)} onInput={(event) => { const element = event.currentTarget; element.style.height = "auto"; element.style.height = `${Math.min(element.scrollHeight, 150)}px`; }} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void send(draft); } }} rows={1} maxLength={1200} placeholder="Ask anything..." /><button type="submit" aria-label="Send message" disabled={pending || draft.trim().length < 2}><span aria-hidden="true">↑</span></button></form>
+        <form className={styles.composer} onSubmit={submit}><label htmlFor="general-question" className={styles.srOnly}>Ask General</label><span className={styles.composerSparkle} aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m12 2 1.7 6.3L20 10l-6.3 1.7L12 18l-1.7-6.3L4 10l6.3-1.7z" /><path d="m19 16 .7 2.3L22 19l-2.3.7L19 22l-.7-2.3L16 19l2.3-.7z" /></svg></span><textarea ref={input} id="general-question" value={draft} onChange={(event) => setDraft(event.target.value)} onInput={(event) => { const element = event.currentTarget; element.style.height = "auto"; element.style.height = `${Math.min(element.scrollHeight, 150)}px`; }} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void send(draft); } }} rows={1} maxLength={1200} placeholder="Ask anything..." /><button type="submit" aria-label="Send message" disabled={pending || draft.trim().length < 2}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 14-7-3 14-4-5-7-2Z" /><path d="m12 14 7-9" /></svg></button></form>
       </main>
     </div>
   </div>;

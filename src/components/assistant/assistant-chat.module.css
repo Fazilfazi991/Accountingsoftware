@@ -244,6 +244,37 @@
   .actions > *, .switchDialog button { flex-basis: 100%; }
 }
 
+/* AI workspace canvas: the global shell owns navigation and top bar. */
+.page, .embedded.page { height: 100%; min-height: 0; padding: 0; background: #fff; }
+.workspace { width: 100%; height: 100%; min-height: 0; border: 0; border-radius: 0; background: #fff; box-shadow: none; }
+.conversation { padding: 24px 20px 32px; }
+.welcome, .exchange, .loading, .error, .notice { width: min(100%, 880px); }
+.welcome { padding: 18px 0 28px; }
+.chatTitle { margin: 0 0 24px; color: #17314f; font-size: 15px; font-weight: 750; letter-spacing: -.01em; }
+.welcomeMark { width: 36px; height: 36px; margin-bottom: 18px; border-radius: 11px; }
+.welcome h2 { margin-bottom: 8px; font-size: clamp(30px, 4vw, 38px); }
+.primarySuggestions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 24px; }
+.suggestion { min-height: 36px; padding: 8px 12px; border-radius: 999px; font-size: 12px; }
+.suggestionArrow { font-size: 15px; }
+.secondarySuggestions { margin-top: 13px; }
+.composer { grid-template-columns: 22px minmax(0, 1fr) 50px; width: min(100%, 920px); margin-inline: auto; padding: 12px 20px calc(14px + env(safe-area-inset-bottom)); }
+.composer textarea { min-height: 52px; height: 52px; max-height: 150px; padding: 14px 15px; }
+.composer > button { width: 50px; height: 50px; min-width: 50px; min-height: 50px; }
+.composer > button svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.composerSparkle { display: grid; place-items: center; width: 22px; height: 22px; color: #4a8cc4; }
+.composerSparkle svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.composerMeta, .trust { display: none; }
+@media (max-width: 760px) {
+  .conversation { padding: 18px 16px 24px; }
+  .welcome { padding-top: 10px; }
+  .welcome h2 { font-size: 30px; }
+  .primarySuggestions { flex-wrap: nowrap; overflow-x: auto; margin-inline: -2px; padding-bottom: 2px; scrollbar-width: none; }
+  .primarySuggestions::-webkit-scrollbar { display: none; }
+  .suggestion { flex: 0 0 auto; }
+  .composer { width: 100%; grid-template-columns: 20px minmax(0, 1fr) 46px; padding-inline: 14px; }
+  .composer > button { width: 46px; height: 46px; min-width: 46px; min-height: 46px; }
+}
+
 /* Conversation-first workspace refresh */
 .page {
   padding: 0;

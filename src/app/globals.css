@@ -324,3 +324,42 @@ body { background: #f4f7fb; }
   .sidebar-wrap { min-height: 100dvh; }
   .sidebar-wrap .sidebar { min-height: 100dvh; }
 }
+
+/* Dedicated AI workspace shell. Accounting navigation is intentionally absent here. */
+.ai-app { display: flex; width: 100%; height: 100dvh; min-height: 0; overflow: hidden; background: #f6f9fc; }
+.ai-sidebar { width: 248px; flex: 0 0 248px; min-height: 0; display: flex; flex-direction: column; padding: 20px 14px 16px; overflow: hidden; color: #dbe7f3; background: #13263e; }
+.ai-brand { display: flex; align-items: center; gap: 10px; padding: 0 10px 20px; color: #fff; font-size: 18px; letter-spacing: -.03em; }
+.ai-brand .brand-mark { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 8px; color: #fff; background: #2874c6; font-size: 15px; font-weight: 800; }
+.ai-new-chat { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 42px; margin-bottom: 22px; border: 1px solid #5d8fbe; border-radius: 9px; color: #fff; background: #24517d; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+.ai-new-chat:hover, .ai-new-chat:focus-visible { background: #2d6396; }
+.ai-new-chat svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+.ai-history { min-height: 0; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #5c7693 transparent; }
+.ai-history p { margin: 14px 10px 6px; color: #8fa8c1; font-size: 10px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; }
+.ai-history a, .ai-sidebar-footer a { display: block; min-height: 36px; padding: 9px 10px; border-radius: 7px; color: #c6d5e5; text-decoration: none; font-size: 13px; line-height: 1.35; }
+.ai-history a:hover, .ai-history a.active, .ai-sidebar-footer a:hover, .ai-sidebar-footer a.active { color: #fff; background: #24496f; }
+.ai-history a.active, .ai-sidebar-footer a.active { box-shadow: inset 3px 0 #7ab4f0; }
+.ai-sidebar-footer { margin-top: auto; padding-top: 14px; border-top: 1px solid #2a415d; }
+.ai-sidebar-footer .ai-back { margin-top: 10px; color: #96acc3; }
+.ai-sidebar-footer .ai-back { display: flex; align-items: center; gap: 7px; }
+.ai-sidebar-footer .ai-back svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.ai-main { min-width: 0; min-height: 0; flex: 1 1 auto; display: flex; flex-direction: column; overflow: hidden; }
+.ai-topbar { flex: 0 0 60px; min-height: 60px; padding-inline: 22px; border-bottom: 1px solid #dbe4ed; background: #fff; }
+.ai-topbar .context-switchers { margin-left: auto; }
+.ai-mobile-menu, .ai-mobile-title { display: none; }
+.ai-sidebar-backdrop { display: none; }
+.ai-main > .content { min-height: 0; flex: 1 1 auto; overflow: hidden; padding: 0; }
+.ai-main .product-content-assistant { overflow: hidden; }
+@media (max-width: 760px) {
+  .ai-app { background: #fff; }
+  .ai-sidebar { position: fixed; inset: 0 auto 0 0; z-index: 60; width: min(300px, 86vw); transform: translateX(-105%); transition: transform .2s cubic-bezier(.16,1,.3,1); box-shadow: 12px 0 34px #07111f3d; }
+  .ai-sidebar.open { transform: translateX(0); }
+  .ai-sidebar-backdrop { position: fixed; inset: 0; z-index: 55; display: block; border: 0; background: #07111f80; }
+  .ai-topbar { padding-inline: 12px 14px; }
+  .ai-mobile-menu { display: grid; place-items: center; width: 36px; height: 36px; margin-right: 8px; border: 0; border-radius: 7px; color: #27425f; background: transparent; cursor: pointer; }
+  .ai-mobile-menu:hover, .ai-mobile-menu:focus-visible { background: #edf3f8; }
+  .ai-mobile-menu svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+  .ai-mobile-title { display: block; color: #17314f; font-size: 14px; font-weight: 750; }
+  .ai-topbar .context-switchers { margin-left: auto; }
+  .ai-topbar .context-label { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { .ai-sidebar { transition: none; } }
