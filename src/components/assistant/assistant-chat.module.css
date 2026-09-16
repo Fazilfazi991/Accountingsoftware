@@ -282,13 +282,14 @@
 .conversation {
   padding: clamp(28px, 5vw, 60px) clamp(20px, 8vw, 132px) 36px;
   scrollbar-color: #a8bbce transparent;
+  scrollbar-gutter: auto;
 }
 .welcome {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   max-width: 840px;
-  padding: clamp(16px, 7vh, 72px) 0 34px;
+  padding: 40px 0 24px;
 }
 .welcomeMark {
   display: grid;
@@ -317,44 +318,54 @@
   font-size: 15px;
   line-height: 1.65;
 }
-.suggestionGroups {
+.primarySuggestions {
   width: 100%;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 24px 42px;
-  margin-top: 42px;
+  gap: 10px;
+  margin-top: 26px;
 }
-.suggestionGroup { min-width: 0; }
-.groupHeading {
-  margin-bottom: 10px;
+.secondarySuggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 18px;
+  margin-top: 15px;
 }
-.groupHeading h3 {
-  color: #203a58;
-  font-size: 13px;
-  letter-spacing: .08em;
-  text-transform: uppercase;
+.secondarySuggestions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 30px;
+  padding: 3px 0;
+  border: 0;
+  color: #2d6ca3;
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
 }
-.groupHeading span {
-  color: #8595a8;
-  font-size: 11px;
-}
+.secondarySuggestions button:hover, .secondarySuggestions button:focus-visible { color: #174a7c; text-decoration: underline; text-underline-offset: 3px; }
+.secondarySuggestions button:disabled { color: #9aa9b8; cursor: not-allowed; text-decoration: none; }
+.secondarySuggestions button span { font-size: 16px; font-weight: 400; }
 .suggestions {
   display: grid;
   gap: 8px;
 }
 .suggestion {
-  min-height: 44px;
+  min-height: 62px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 14px;
-  padding: 10px 13px;
+  padding: 11px 14px;
   border: 1px solid #d7e1eb;
   border-radius: 10px;
   color: #2a415d;
   background: #fff;
   font: inherit;
   font-size: 13px;
+  line-height: 1.35;
   text-align: left;
   cursor: pointer;
   transition: border-color .16s ease, background .16s ease, transform .16s ease;
@@ -445,10 +456,10 @@
   .header h1 { font-size: 22px; }
   .context { max-width: 230px; font-size: 12px; }
   .conversation { padding: 28px 16px 24px; }
-  .welcome { padding: 28px 0 24px; }
+  .welcome { padding: 34px 0 24px; }
   .welcome h2 { font-size: 32px; }
   .welcome > p { font-size: 14px; }
-  .suggestionGroups { grid-template-columns: 1fr; gap: 24px; margin-top: 32px; }
+  .primarySuggestions { gap: 8px; margin-top: 24px; }
   .composer { padding: 10px 16px calc(12px + env(safe-area-inset-bottom)); }
   .composer textarea { min-height: 50px; }
   .composer > button { min-width: 50px; width: 50px; min-height: 50px; }
@@ -461,5 +472,6 @@
   .header { padding-inline: 14px; }
   .newConversation { max-width: 42px; }
   .welcome h2 { font-size: 29px; }
+  .primarySuggestions { grid-template-columns: 1fr; }
   .composerMeta { font-size: 10px; }
 }

@@ -9,39 +9,16 @@ import { GuidedQuotation } from "./guided-quotation";
 import { GuidedCustomer } from "./guided-customer";
 import styles from "./assistant-chat.module.css";
 
-const suggestionGroups = [
-  {
-    label: "Understand",
-    description: "Ask about your records",
-    items: [
-      ["How much do customers owe me?", "Who owes me money?"],
-      ["How is my business doing this month?", "Did we make profit this month?"],
-    ],
-  },
-  {
-    label: "Create",
-    description: "Start a guided draft",
-    items: [
-      ["Create an invoice", "Create an invoice"],
-      ["Create a quotation", "Create a quotation"],
-    ],
-  },
-  {
-    label: "Record",
-    description: "Keep your books current",
-    items: [
-      ["Add a customer", "Add a customer"],
-      ["Record an expense", "Record an expense"],
-    ],
-  },
-  {
-    label: "Check",
-    description: "Stay ahead of deadlines",
-    items: [
-      ["What bills are due this week?", "What bills are due this week?"],
-      ["Estimate my VAT", "How much VAT might I owe?"],
-    ],
-  },
+const primarySuggestions = [
+  ["How much do customers owe me?", "Who owes me money?"],
+  ["What bills are due this week?", "What bills are due this week?"],
+  ["Create an invoice", "Create an invoice"],
+  ["How is my business doing this month?", "Did we make profit this month?"],
+] as const;
+const secondarySuggestions = [
+  ["Create quotation", "Create a quotation", "create_quotation_draft"],
+  ["Add customer", "Add a customer", "create_customer"],
+  ["Record expense", "Record an expense", "create_expense_draft"],
 ] as const;
 type Message = { id: number; question: string; response?: AssistantAnswer; error?: string; notice?: string };
 
@@ -144,19 +121,24 @@ export function AssistantChat({ organization, branch, providerConfigured = false
         {!activeAction && messages.length === 0 && <section className={styles.welcome}>
           <div className={styles.welcomeMark} aria-hidden="true">L</div>
           <h2>What can I help you with?</h2>
-          <p>Ask about your selected-branch records, or start a guided action. I’ll show you a preview before anything is saved.</p>
-          <div className={styles.suggestionGroups}>
-            {suggestionGroups.map((group) => <section className={styles.suggestionGroup} key={group.label}>
-              <div className={styles.groupHeading}><h3>{group.label}</h3><span>{group.description}</span></div>
-              <div className={styles.suggestions}>{group.items.map(([label, prompt]) => {
-                const action = label === "Create an invoice" ? "create_invoice_draft" : label === "Create a quotation" ? "create_quotation_draft" : label === "Add a customer" ? "create_customer" : null;
-                const unavailable = action ? !allowed[action] || actionRegistry[action].status !== "available" : false;
-                return <button type="button" className={`${styles.suggestion} ${action ? styles.actionSuggestion : ""}`} key={label}
-                  disabled={unavailable} onClick={() => action ? startAction(action) : void send(prompt)}>
-                  <span>{label}</span><span className={styles.suggestionArrow} aria-hidden="true">{action ? "＋" : "→"}</span>
-                </button>;
-              })}</div>
-            </section>)}
+          <p>Ask about your business or tell me what you&apos;d like to do.</p>
+          <div className={styles.primarySuggestions}>
+            {primarySuggestions.map(([label, prompt]) => {
+              const action = label === "Create an invoice" ? "create_invoice_draft" : null;
+              const unavailable = action ? !allowed[action] || actionRegistry[action].status !== "available" : false;
+              return <button type="button" className={`${styles.suggestion} ${action ? styles.actionSuggestion : ""}`} key={label}
+                disabled={unavailable} onClick={() => action ? startAction(action) : void send(prompt)}>
+                <span>{label}</span><span className={styles.suggestionArrow} aria-hidden="true">{action ? "＋" : "→"}</span>
+              </button>;
+            })}
+          </div>
+          <div className={styles.secondarySuggestions} aria-label="More actions">
+            {secondarySuggestions.map(([label, prompt, action]) => {
+              const unavailable = !allowed[action] || actionRegistry[action].status !== "available";
+              return <button type="button" key={label} disabled={unavailable} onClick={() => void send(prompt)}>
+                <span aria-hidden="true">＋</span>{label}
+              </button>;
+            })}
           </div>
           <span className={styles.trust}>{providerConfigured ? "Grounded in Ledgerly records" : "Guided financial assistant · no AI required"}</span>
         </section>}
