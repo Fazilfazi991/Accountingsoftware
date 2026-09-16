@@ -360,8 +360,8 @@ body { background: #f4f7fb; }
 @media (prefers-reduced-motion: reduce) { .route-spinner { animation: none; } }
 @media (max-width: 760px) {
   .ai-app { background: #fff; }
-  .ai-sidebar { position: fixed; inset: 0 auto 0 0; z-index: 60; width: min(300px, 86vw); transform: translateX(-105%); transition: transform .2s cubic-bezier(.16,1,.3,1); box-shadow: 12px 0 34px #07111f3d; }
-  .ai-sidebar.open { transform: translateX(0); }
+  .ai-sidebar { position: fixed; inset: 0 auto 0 0; z-index: 60; width: min(300px, 86vw); visibility: hidden; pointer-events: none; transform: translateX(-100%); transition: transform .2s cubic-bezier(.16,1,.3,1), visibility 0s linear .2s; box-shadow: 12px 0 34px #07111f3d; }
+  .ai-sidebar.open { visibility: visible; pointer-events: auto; transform: translateX(0); transition-delay: 0s; }
   .ai-sidebar-backdrop { position: fixed; inset: 0; z-index: 55; display: block; border: 0; background: #07111f80; }
   .ai-topbar { padding-inline: 12px 14px; }
   .ai-mobile-menu { display: grid; place-items: center; width: 36px; height: 36px; margin-right: 8px; border: 0; border-radius: 7px; color: #27425f; background: transparent; cursor: pointer; }

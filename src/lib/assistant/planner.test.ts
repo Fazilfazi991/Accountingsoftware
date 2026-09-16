@@ -28,7 +28,9 @@ describe("DeepSeek-compatible planner", () => {
     }), { status: 200 })));
     await expect(new CompatibleProviderPlanner().plan("How much money do I have?", [])).resolves.toEqual({ tool: "get_cash_position", args: {} });
     expect(fetch).toHaveBeenCalledOnce();
-    expect((fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0][1].body).toContain('"response_format":{"type":"json_object"}');
+    const body = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0][1].body;
+    expect(body).toContain('"thinking":{"type":"disabled"}');
+    expect(body).toContain('"response_format":{"type":"json_object"}');
   });
 
   it("surfaces provider failure instead of silently claiming a deterministic answer", async () => {

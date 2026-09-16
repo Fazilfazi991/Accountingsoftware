@@ -447,13 +447,17 @@
   box-shadow: 0 8px 24px rgba(22,38,61,.04);
 }
 .composer {
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: 22px minmax(0, 1fr) 50px;
+  align-items: center;
   gap: 10px;
   padding: 14px clamp(20px, 8vw, 132px) 16px;
   background: rgba(255,255,255,.96);
   box-shadow: 0 -8px 26px rgba(22,38,61,.06);
 }
 .composer textarea {
+  grid-column: 2;
+  min-width: 0;
+  width: 100%;
   min-height: 50px;
   max-height: 140px;
   resize: none;
@@ -464,6 +468,7 @@
 }
 .composer textarea:focus { background: #fff; }
 .composer > button {
+  grid-column: 3;
   min-width: 50px;
   min-height: 50px;
   width: 50px;
@@ -476,6 +481,7 @@
   color: #8493a4;
   font-size: 11px;
 }
+.composerSparkle { grid-column: 1; }
 .composerHint { color: #9aa8b7; }
 .historyPopover {
   border-color: #d7e1eb;
@@ -491,9 +497,9 @@
   .welcome h2 { font-size: 32px; }
   .welcome > p { font-size: 14px; }
   .primarySuggestions { gap: 8px; margin-top: 24px; }
-  .composer { padding: 10px 16px calc(12px + env(safe-area-inset-bottom)); }
+  .composer { grid-template-columns: 20px minmax(0, 1fr) 46px; padding: 10px 16px calc(12px + env(safe-area-inset-bottom)); }
   .composer textarea { min-height: 50px; }
-  .composer > button { min-width: 50px; width: 50px; min-height: 50px; }
+  .composer > button { min-width: 46px; width: 46px; min-height: 46px; height: 46px; }
   .composerMeta { display: flex; justify-content: space-between; gap: 8px; }
   .composerHint { display: none; }
   .historyPopover { position: fixed; top: 70px; right: 12px; width: min(300px, calc(100vw - 24px)); }
