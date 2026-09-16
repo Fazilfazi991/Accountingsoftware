@@ -9,6 +9,7 @@ describe("product navigation", () => {
     expect(groups.slice(0, 3).map(({ label, href }) => [label, href])).toEqual([
       ["Home", "/"], ["Overview", "/overview"], ["Ask FYNTA", "/assistant"],
     ]);
+    expect(groups.some(({ label, href }) => label === "Ask General" || href === "/general")).toBe(false);
   });
 
   it("preserves the existing accounting module destinations", () => {

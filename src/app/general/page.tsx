@@ -1,13 +1,5 @@
-import type { Metadata } from "next";
-import { requireOrganizationContext } from "@/lib/organization-context";
-import { AiWorkspaceShell } from "@/components/product-workspace";
-import { GeneralChat } from "@/components/general-chat";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = { title: "Ask General · FYNTA", description: "Ask questions and work through everyday tasks" };
-
-export default async function GeneralPage() {
-  const context = await requireOrganizationContext();
-  return <AiWorkspaceShell context={context.payload} route="/general">
-    <GeneralChat />
-  </AiWorkspaceShell>;
+export default function GeneralPage() {
+  redirect("/assistant");
 }

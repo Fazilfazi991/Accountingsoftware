@@ -1,4 +1,4 @@
-.flow{max-width:1040px;margin:0 auto;color:#172033;padding:4px 0 40px}
+.flow{max-width:1180px;margin:0 auto;color:#172033;padding:4px 0 40px}
 .flow h2{font-size:27px;letter-spacing:-.03em;margin:0 0 5px}.flow h3{font-size:20px;letter-spacing:-.02em;margin:0 0 5px}
 .flow p{color:#60736a;line-height:1.5;margin:0 0 16px}.top{display:flex;justify-content:space-between;align-items:start;gap:18px;margin-bottom:18px}
 .top p{margin:0}.progress{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;list-style:none;padding:0;margin:0 0 13px}
