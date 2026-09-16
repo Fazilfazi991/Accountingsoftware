@@ -16,8 +16,10 @@ export async function requireOrganizationContext() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
-  const { data: profile } = await supabase.from("profiles").select("display_name").eq("id", user.id).maybeSingle();
-  const { data: memberships } = await supabase.from("organization_memberships").select("id, organization_id, default_branch_id, role, is_owner, organizations!inner(id,name,legal_name,trn,email,phone,address,emirate,country_code,base_currency,timezone,status)").eq("user_id", user.id).eq("membership_status", "active").eq("organizations.status", "active");
+  const [{ data: profile }, { data: memberships }] = await Promise.all([
+    supabase.from("profiles").select("display_name").eq("id", user.id).maybeSingle(),
+    supabase.from("organization_memberships").select("id, organization_id, default_branch_id, role, is_owner, organizations!inner(id,name,legal_name,trn,email,phone,address,emirate,country_code,base_currency,timezone,status)").eq("user_id", user.id).eq("membership_status", "active").eq("organizations.status", "active"),
+  ]);
   if (!memberships?.length) redirect("/onboarding");
   const store = await cookies();
   const requestedOrganizationId = store.get("ledgerly-org")?.value;
