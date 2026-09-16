@@ -306,3 +306,21 @@ body,.main{overflow-x:hidden}.app,.content,.dashboard-grid,.panel{min-width:0}
 .account-popover { width: min(270px, calc(100vw - 24px)); padding: 16px; gap: 8px; border-radius: 12px; }
 .account-popover b { min-width: 0; font-size: 14px; line-height: 1.3; overflow-wrap: anywhere; }
 @media (max-width: 760px) { .topbar-page-name { font-size: 14px; } }
+
+/* Keep the shell anchored to the viewport so each workspace owns its scroll region. */
+html, body { height: 100%; overflow: hidden; }
+body { background: #f4f7fb; }
+.app { height: 100dvh; min-height: 0; overflow: hidden; }
+.sidebar-wrap { align-self: stretch; min-height: 100dvh; background: var(--nav); }
+.sidebar { min-height: 100dvh; }
+.main { height: 100dvh; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+.topbar { flex: 0 0 64px; min-width: 0; }
+.content { width: 100%; flex: 1 1 auto; min-height: 0; margin: 0 auto; overflow: auto; }
+.product-content { margin: 0; overflow: auto; }
+.product-content-assistant { overflow: hidden; }
+.mobile-nav { background: var(--nav); }
+
+@media (max-width: 760px) {
+  .sidebar-wrap { min-height: 100dvh; }
+  .sidebar-wrap .sidebar { min-height: 100dvh; }
+}

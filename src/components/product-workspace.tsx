@@ -12,7 +12,8 @@ export function ProductWorkspace({ context, route, children, topbar = null }: {
   topbar?: ReactNode;
 }) {
   return <OrganizationProvider context={context}>
-    <AppShell groups={primaryNavigation} route={route} topbar={topbar} contentClassName="product-content">
+    <AppShell groups={primaryNavigation} route={route} topbar={topbar}
+      contentClassName={route === "/assistant" ? "product-content product-content-assistant" : "product-content"}>
       {children}
     </AppShell>
   </OrganizationProvider>;

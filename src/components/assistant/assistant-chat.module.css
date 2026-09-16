@@ -1,4 +1,4 @@
-.page{min-height:100vh;background:#f5f7f4;color:#14231e;padding:clamp(12px,3vw,36px);font-family:Arial,sans-serif}
+.page{min-height:100vh;background:#f5f7f4;color:#14231e;padding:clamp(12px,3vw,36px);font-family:var(--font-geist-sans),system-ui,sans-serif}
 .embedded.page{min-height:calc(100dvh - 64px);font-family:var(--font-geist-sans),Arial,sans-serif}
 .embedded .workspace{height:calc(100dvh - 64px - 2 * clamp(12px,3vw,36px));min-height:480px}
 .workspace{max-width:1120px;height:calc(100dvh - 72px);min-height:520px;margin:auto;background:#fff;border:1px solid #dce5df;border-radius:24px;box-shadow:0 16px 50px #1933290b;display:flex;flex-direction:column;overflow:hidden}
@@ -21,6 +21,92 @@
 @media(max-width:650px){.embedded .workspace{height:calc(100dvh - 64px);min-height:0}}
 @media(max-width:650px){.identity{display:none}.mobileIdentity{display:block;font-size:11px;color:#64766a;margin-top:7px}}
 @media(max-width:390px){.facts{grid-template-columns:1fr 1fr}.identity{display:none}.composer{grid-template-columns:1fr}.composer>button{min-height:44px}}
+
+/* Operate-first refinement: give the assistant a full-height workspace and one
+   intentional reading surface, while keeping the established green/blue tone. */
+.page {
+  min-height: 100%;
+  height: 100%;
+  padding: clamp(14px, 2.2vw, 30px);
+  background: #eef3f8;
+  color: #172033;
+}
+.embedded.page { min-height: 0; height: 100%; padding: clamp(12px, 2vw, 28px); }
+.workspace {
+  width: 100%;
+  max-width: 1440px;
+  height: 100%;
+  min-height: 0;
+  border-color: #d9e2ec;
+  border-radius: 18px;
+  box-shadow: 0 18px 55px #17203314;
+}
+.embedded .workspace { height: 100%; min-height: 0; }
+.header {
+  padding: 22px clamp(24px, 4.5vw, 72px);
+  border-bottom-color: #e3eaf2;
+  background: #fff;
+}
+.header h1 { color: #172033; }
+.header p { color: #53677d; }
+.back { color: #1f5e9c; }
+.identity {
+  min-width: 250px;
+  max-width: 340px;
+  padding: 14px 16px;
+  border-color: #cbdbea;
+  border-radius: 12px;
+  background: #f4f8fc;
+  color: #172033;
+  text-align: left;
+}
+.identity strong { color: #172033; }
+.identity span { color: #536b83; }
+.conversation {
+  padding: 30px clamp(24px, 7vw, 104px);
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: #9ab1c8 transparent;
+}
+.conversation::-webkit-scrollbar { width: 10px; }
+.conversation::-webkit-scrollbar-thumb { background: #9ab1c8; border: 3px solid transparent; border-radius: 99px; background-clip: padding-box; }
+.welcome, .exchange { max-width: 960px; }
+.welcome { padding: 18px 0 34px; }
+.welcome h2 { color: #172033; }
+.welcome p { color: #53677d; }
+.trust, .status { color: #195b91; background: #e6f0fa; }
+.prompts button, .createGrid button { border-color: #d4e0eb; color: #20354a; background: #fff; }
+.prompts button:hover, .prompts button:focus-visible,
+.createGrid button:not(:disabled):hover, .createGrid button:not(:disabled):focus-visible { border-color: #4c8cc8; background: #f2f7fc; }
+.prompts span { color: #2b73ad; }
+.createGrid button:not(:disabled) { background: #eaf3fb; border-color: #b9d2e8; }
+.createGrid button:disabled { background: #f4f6f8; color: #718197; }
+.userMessage { background: #1f5f9d; }
+.answer { border-color: #d9e3ec; background: #fbfdff; }
+.answerText { color: #263b50; }
+.facts > div { border-color: #dce6ef; }
+.facts span, .row small, .source { color: #5b7085; }
+.row, .rows, .disclosure { border-color: #dde6ee; }
+.rowRight a, .actions a { color: #1f5f9d; }
+.actions a { background: #1f5f9d; color: #fff; }
+.followUps button { border-color: #cedde9; color: #1f5f9d; }
+.composer { border-top-color: #dce6ef; padding: 16px clamp(24px, 7vw, 104px) 20px; }
+.composer textarea { border-color: #b9cfe0; outline-color: #3982bb; color: #172033; }
+.composer > button { background: #1f5f9d; }
+.composer > button:hover { background: #174a7c; }
+.composer small, .actionFooter { color: #5b7085; }
+.composerAction { color: #1f5f9d; }
+.notice, .loading { background: #edf4fa; color: #31556f; }
+.error { background: #fff3f0; color: #9d3f2f; }
+
+@media(max-width:650px) {
+  .embedded.page { padding: 0; }
+  .embedded .workspace { border-radius: 0; border: 0; box-shadow: none; }
+  .header { padding: 16px 20px; }
+  .conversation { padding: 20px 16px; }
+  .composer { padding: 12px 16px calc(14px + env(safe-area-inset-bottom)); }
+  .identity { min-width: 0; }
+}
 
 /* The command-center start screen inherits Ledgerly's quiet green product language. */
 .header{padding:18px clamp(20px,4vw,48px)}.header h1{font-size:30px;letter-spacing:-.03em;margin:0 0 4px}
@@ -50,3 +136,48 @@
 @media(max-width:650px){.header{padding:13px 19px}.header h1{font-size:24px}.conversation{padding:17px 16px}.prompts,.createGrid{grid-template-columns:repeat(2,minmax(0,1fr))}.welcome{padding:8px 0 20px}.welcome h2{font-size:23px}}
 @media(max-width:650px){.composerMeta{gap:2px}.composerMeta>span:first-child{font-size:11px;line-height:1.3}
   .composerLinks{width:100%;justify-content:space-between;gap:4px}.composerAction{font-size:11px}}
+
+/* Final layout pass (kept last so the compact start-screen rules above cannot
+   reintroduce the nested page scroll or the narrow content measure). */
+.page { min-height: 100%; height: 100%; padding: clamp(14px, 2.2vw, 30px); background: #eef3f8; color: #172033; }
+.embedded.page { min-height: 0; height: 100%; padding: clamp(12px, 2vw, 28px); }
+.workspace, .embedded .workspace { width: 100%; max-width: 1440px; height: 100%; min-height: 0; border-color: #d9e2ec; border-radius: 18px; box-shadow: 0 18px 55px #17203314; }
+.header { padding: 22px clamp(24px, 4.5vw, 72px); background: #fff; border-bottom-color: #e3eaf2; }
+.header h1, .welcome h2 { color: #172033; }
+.header p, .welcome p { color: #53677d; }
+.back { color: #1f5e9c; }
+.identity { min-width: 250px; max-width: 340px; padding: 14px 16px; border-color: #cbdbea; border-radius: 12px; background: #f4f8fc; color: #172033; text-align: left; }
+.identity strong { color: #172033; }
+.identity span { color: #536b83; }
+.conversation { padding: 30px clamp(24px, 7vw, 104px); scrollbar-gutter: stable; scrollbar-width: thin; scrollbar-color: #9ab1c8 transparent; }
+.conversation::-webkit-scrollbar { width: 10px; }
+.conversation::-webkit-scrollbar-thumb { background: #9ab1c8; border: 3px solid transparent; border-radius: 99px; background-clip: padding-box; }
+.welcome, .exchange { max-width: 960px; }
+.welcome { padding: 18px 0 34px; }
+.trust, .status { color: #195b91; background: #e6f0fa; }
+.prompts button, .createGrid button { border-color: #d4e0eb; color: #20354a; background: #fff; }
+.prompts button:hover, .prompts button:focus-visible, .createGrid button:not(:disabled):hover, .createGrid button:not(:disabled):focus-visible { border-color: #4c8cc8; background: #f2f7fc; }
+.prompts span { color: #2b73ad; }
+.createGrid button:not(:disabled) { background: #eaf3fb; border-color: #b9d2e8; }
+.userMessage { background: #1f5f9d; }
+.answer { border-color: #d9e3ec; background: #fbfdff; }
+.answerText { color: #263b50; }
+.facts > div { border-color: #dce6ef; }
+.facts span, .row small, .source, .composer small, .actionFooter { color: #5b7085; }
+.row, .rows, .disclosure { border-color: #dde6ee; }
+.rowRight a, .composerAction { color: #1f5f9d; }
+.actions a, .composer > button { background: #1f5f9d; }
+.followUps button { border-color: #cedde9; color: #1f5f9d; }
+.composer { border-top-color: #dce6ef; padding: 16px clamp(24px, 7vw, 104px) 20px; }
+.composer textarea { border-color: #b9cfe0; outline-color: #3982bb; color: #172033; }
+.composer > button:hover { background: #174a7c; }
+.notice, .loading { background: #edf4fa; color: #31556f; }
+.error { background: #fff3f0; color: #9d3f2f; }
+@media(max-width:650px) {
+  .embedded.page { padding: 0; }
+  .embedded .workspace { border-radius: 0; border: 0; box-shadow: none; }
+  .header { padding: 16px 20px; }
+  .conversation { padding: 20px 16px; }
+  .composer { padding: 12px 16px calc(14px + env(safe-area-inset-bottom)); }
+  .identity { min-width: 0; }
+}
