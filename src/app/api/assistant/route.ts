@@ -1,5 +1,5 @@
 import { requireOrganizationContext } from "@/lib/organization-context";
-import { getPlanner } from "@/lib/assistant/planner";
+import { getPlanner, ProviderUnavailableError } from "@/lib/assistant/planner";
 import { requestSchema, sanitizeTurns, validatePlan } from "@/lib/assistant/registry";
 import { executeAssistantTool } from "@/lib/assistant/tools";
 
@@ -20,5 +20,8 @@ export async function POST(request: Request) {
     const plan = validatePlan(await getPlanner().plan(parsed.data.message, turns));
     const answer = await executeAssistantTool(plan);
     return Response.json(answer, { headers: { "Cache-Control": "no-store" } });
-  } catch { return Response.json({ error: "Assistant could not understand that question. Try a more specific one." }, { status: 400 }); }
+  } catch (error) {
+    if (error instanceof ProviderUnavailableError) return Response.json({ error: "Ask FYNTA couldn't understand that request right now. Please retry or choose a guided action." }, { status: 503 });
+    return Response.json({ error: "Ask FYNTA could not understand that question. Try a more specific one." }, { status: 400 });
+  }
 }

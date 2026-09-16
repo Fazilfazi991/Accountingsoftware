@@ -35,7 +35,7 @@ export async function POST(request: Request) {
     const response = await fetch(new URL("chat/completions", url.href.endsWith("/") ? url : `${url.href}/`), {
       method: "POST", signal: AbortSignal.timeout(10000), headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
       body: JSON.stringify({ model, temperature: .4, messages: [
-        { role: "system", content: "You are Ask General, Ledgerly’s general-purpose assistant. Help with explanations, writing, brainstorming, planning, and summaries. Do not access, infer, or mutate Ledgerly accounting records. Be concise, useful, and format with plain text, bullets, headings, tables, or code when appropriate." },
+        { role: "system", content: "You are Ask General, FYNTA’s general-purpose assistant. Help with explanations, writing, brainstorming, planning, and summaries. Do not access, infer, or mutate FYNTA accounting records. Be concise, useful, and format with plain text, bullets, headings, tables, or code when appropriate." },
         ...(parsed.data.turns ?? []).map((turn) => ({ role: turn.role, content: turn.content })),
         { role: "user", content: parsed.data.message },
       ] }),
