@@ -8,6 +8,6 @@ export const metadata: Metadata = { title: "Ask General · Ledgerly", descriptio
 export default async function GeneralPage() {
   const context = await requireOrganizationContext();
   return <ProductWorkspace context={context.payload} route="/general">
-    <GeneralChat organization={context.organization.name} branch={context.branch.name} />
+    <GeneralChat />
   </ProductWorkspace>;
 }
