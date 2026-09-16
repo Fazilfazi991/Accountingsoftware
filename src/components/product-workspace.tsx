@@ -7,13 +7,13 @@ import type { OrganizationContextPayload } from "@/lib/organization-context";
 
 export function ProductWorkspace({ context, route, children, topbar = null }: {
   context: OrganizationContextPayload;
-  route: "/" | "/today" | "/assistant";
+  route: "/" | "/today" | "/assistant" | "/general";
   children: ReactNode;
   topbar?: ReactNode;
 }) {
   return <OrganizationProvider context={context}>
     <AppShell groups={primaryNavigation} route={route} topbar={topbar}
-      contentClassName={route === "/assistant" ? "product-content product-content-assistant" : "product-content"}>
+      contentClassName={route === "/assistant" || route === "/general" ? "product-content product-content-assistant" : "product-content"}>
       {children}
     </AppShell>
   </OrganizationProvider>;

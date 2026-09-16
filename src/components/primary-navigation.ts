@@ -4,6 +4,7 @@ export const primaryNavigation = [
   { label: "Home", icon: "home", href: "/" },
   { label: "Overview", icon: "overview", href: "/overview" },
   { label: "Ask Ledgerly", icon: "assistant", href: "/assistant" },
+  { label: "Ask General", icon: "assistant", href: "/general" },
   {
     label: "Sales",
     icon: "sales",

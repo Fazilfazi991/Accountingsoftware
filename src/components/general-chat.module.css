@@ -1,0 +1,80 @@
+.page { height: 100%; min-height: 0; background: #f4f7fb; color: #16263d; }
+.workspace { height: 100%; min-height: 0; display: flex; background: #f8fafc; }
+.historySidebar { width: 260px; flex: 0 0 260px; min-height: 0; padding: 25px 14px; border-right: 1px solid #dfe7ef; background: #fff; }
+.historyHeading { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 8px 20px; }
+.historyHeading h2 { margin: 0; color: #1b304b; font-size: 15px; letter-spacing: -.02em; }
+.historyHeading button { display: grid; place-items: center; width: 36px; height: 36px; border: 1px solid #cbdceb; border-radius: 10px; color: #185da4; background: #fff; font-size: 23px; line-height: 1; cursor: pointer; }
+.historyList { display: grid; gap: 4px; }
+.historyItem { display: grid; gap: 5px; width: 100%; padding: 12px 10px; border: 0; border-radius: 10px; color: #304862; background: transparent; text-align: left; cursor: pointer; }
+.historyItem:hover, .historyCurrent { background: #eaf3fc; color: #124f88; }
+.historyItem strong { font-size: 13px; font-weight: 650; }
+.historyItem small { color: #8596a9; font-size: 11px; }
+.main { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.header { display: flex; align-items: center; justify-content: space-between; gap: 24px; min-height: 112px; padding: 22px clamp(24px, 4vw, 64px); border-bottom: 1px solid #dfe7ef; background: #fff; }
+.header h1 { margin: 0; color: #16263d; font-size: clamp(24px, 2.2vw, 31px); letter-spacing: -.045em; }
+.header p { margin: 6px 0 0; color: #5c7189; font-size: 13px; }
+.header span { display: block; margin-top: 9px; color: #8092a7; font-size: 12px; }
+.headerActions { display: flex; align-items: center; gap: 9px; flex: 0 0 auto; }
+.historyButton, .newButton { min-height: 40px; padding: 9px 13px; border-radius: 9px; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+.historyButton { border: 1px solid #cbdceb; color: #245980; background: #fff; }
+.newButton { border: 1px solid #185da4; color: #fff; background: #185da4; }
+.newButton:disabled { opacity: .55; cursor: not-allowed; }
+.conversation { flex: 1; min-height: 0; overflow-y: auto; padding: 20px clamp(20px, 5vw, 80px) 30px; scrollbar-width: thin; scrollbar-color: #a8bbce transparent; }
+.starterRow { display: flex; flex-wrap: wrap; gap: 8px; max-width: 980px; margin: 0 auto; padding-bottom: 18px; border-bottom: 1px solid #e6edf4; }
+.starterRow button { display: inline-flex; align-items: center; gap: 12px; min-height: 36px; padding: 7px 13px; border: 1px solid #cbdceb; border-radius: 999px; color: #1b64a4; background: #fff; font: inherit; font-size: 12px; font-weight: 650; cursor: pointer; }
+.starterRow button:hover { border-color: #6e9ec9; background: #f5faff; }
+.starterRow span { font-size: 14px; }
+.empty { width: min(100%, 760px); margin: 55px auto 0; text-align: center; }
+.avatar, .assistantAvatar, .userAvatar { display: grid; place-items: center; }
+.avatar { width: 42px; height: 42px; margin: 0 auto 18px; border: 1px solid #cbdceb; border-radius: 13px; color: #fff; background: #185da4; font-weight: 800; box-shadow: 0 7px 16px #185da42b; }
+.empty h2 { margin: 0 0 9px; color: #203954; font-size: clamp(24px, 3vw, 34px); letter-spacing: -.045em; }
+.empty p { margin: 0; color: #71849a; font-size: 14px; }
+.userRow, .assistantRow { display: flex; align-items: flex-start; gap: 12px; width: min(100%, 820px); margin: 30px auto 0; }
+.userRow { flex-direction: row-reverse; }
+.assistantAvatar, .userAvatar { flex: 0 0 34px; width: 34px; height: 34px; border-radius: 11px; font-size: 10px; font-weight: 800; }
+.assistantAvatar { border: 1px solid #cbdceb; color: #fff; background: #185da4; }
+.userAvatar { color: #376383; background: #e3edf6; }
+.message { min-width: 0; max-width: min(82%, 720px); color: #263f5a; line-height: 1.65; }
+.userRow .message { padding: 11px 15px; border-radius: 15px 15px 4px 15px; color: #fff; background: #185da4; }
+.text p { margin: 0 0 9px; }
+.text p:last-child { margin-bottom: 0; }
+.listItem { display: flex; gap: 8px; margin: 4px 0; }
+.listItem span { color: #3479b4; }
+.typing { color: #6a8097; font-size: 13px; }
+.typing span { display: inline-block; animation: blink 1.1s infinite; }
+.typing span:nth-child(2) { animation-delay: .18s; }.typing span:nth-child(3) { animation-delay: .36s; }
+@keyframes blink { 0%, 70%, 100% { opacity: .25; } 35% { opacity: 1; } }
+.error { color: #a44335; }.error button { margin-left: 8px; border: 0; color: inherit; background: transparent; text-decoration: underline; cursor: pointer; }
+.composer { display: grid; grid-template-columns: minmax(0, 1fr) 48px; gap: 9px; padding: 12px clamp(20px, 5vw, 80px) calc(13px + env(safe-area-inset-bottom)); border-top: 1px solid #dfe7ef; background: #fff; box-shadow: 0 -8px 24px #16263d0b; }
+.composer textarea { width: 100%; min-height: 48px; max-height: 150px; resize: none; padding: 13px 15px; border: 1px solid #c7d6e4; border-radius: 14px; color: #16263d; background: #f9fbfd; font: inherit; line-height: 1.4; outline-color: #2d78ba; }
+.composer textarea:focus { background: #fff; }
+.composer textarea::placeholder { color: #8193a8; }
+.composer > button { width: 48px; height: 48px; align-self: end; border: 0; border-radius: 14px; color: #fff; background: #185da4; font: inherit; font-size: 21px; cursor: pointer; }
+.composer > button:disabled { opacity: .45; cursor: not-allowed; }
+.composer small { grid-column: 1 / -1; color: #92a0af; font-size: 10px; }
+.historyBackdrop { display: none; }
+.srOnly { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+@media (max-width: 900px) and (min-width: 761px) { .historySidebar { width: 220px; flex-basis: 220px; } .header { padding-inline: 28px; } }
+@media (max-width: 760px) {
+  .historySidebar { position: fixed; inset: 0 auto 0 0; z-index: 45; width: min(300px, 86vw); transform: translateX(-105%); transition: transform .2s ease; box-shadow: 10px 0 35px #16263d2a; }
+  .historySidebar.historyOpen { transform: translateX(0); }
+  .historyBackdrop { position: fixed; inset: 0; z-index: 44; display: block; border: 0; background: #10213a80; }
+  .header { align-items: flex-start; min-height: 102px; padding: 16px; }
+  .header p { max-width: 245px; line-height: 1.4; }
+  .header span { font-size: 11px; }
+  .headerActions { gap: 6px; }
+  .historyButton, .newButton { min-height: 36px; padding: 8px 9px; font-size: 11px; }
+  .newButton { max-width: 42px; overflow: hidden; font-size: 0; }
+  .newButton::before { content: "+"; font-size: 20px; font-weight: 400; }
+  .conversation { padding: 14px 16px 24px; }
+  .starterRow { flex-wrap: nowrap; overflow-x: auto; margin-inline: -2px; padding-bottom: 12px; scrollbar-width: none; }
+  .starterRow::-webkit-scrollbar { display: none; }
+  .starterRow button { flex: 0 0 auto; }
+  .empty { margin-top: 42px; }
+  .empty h2 { font-size: 27px; }
+  .userRow, .assistantRow { margin-top: 24px; }
+  .message { max-width: calc(100% - 46px); }
+  .composer { grid-template-columns: minmax(0, 1fr) 46px; padding-inline: 16px; }
+  .composer > button { width: 46px; height: 46px; }
+}
+@media (prefers-reduced-motion: reduce) { .historySidebar, .typing span { animation: none; transition: none; } }
