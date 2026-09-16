@@ -22,7 +22,7 @@ export function AssistantChat({ organization, branch, providerConfigured = false
   const [messages, setMessages] = useState<Message[]>([]), [draft, setDraft] = useState(""), [pending, setPending] = useState(false),
     [activeAction, setActiveAction] = useState<ActionId | null>(null), [handoffCustomerId, setHandoffCustomerId] = useState<string>(),
     [switchPrompt, setSwitchPrompt] = useState<{ target: ActionId; customerId?: string } | null>(null),
-    [customerOrigin, setCustomerOrigin] = useState<ActionId | null>(null);
+    [customerOrigin, setCustomerOrigin] = useState<ActionId | null>(null), [historyOpen, setHistoryOpen] = useState(false);
   const sequence = useRef(0), scroll = useRef<HTMLDivElement>(null), input = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
     if (messages.length > 0 || pending) scroll.current?.scrollTo({ top: scroll.current.scrollHeight, behavior: "smooth" });
@@ -38,6 +38,11 @@ export function AssistantChat({ organization, branch, providerConfigured = false
     else startAction(target, customerId);
   }
   function closeAction() { setActiveAction(null); setSwitchPrompt(null); setHandoffCustomerId(undefined); setCustomerOrigin(null); }
+  function resetConversation() {
+    if (pending || activeAction) return;
+    setMessages([]); setDraft(""); setHistoryOpen(false);
+    requestAnimationFrame(() => input.current?.focus());
+  }
   async function send(question: string) {
     if (pending || activeAction || question.trim().length < 2) return;
     const text = question.trim().slice(0, 500), id = ++sequence.current;
@@ -71,10 +76,24 @@ export function AssistantChat({ organization, branch, providerConfigured = false
   return <div className={`${styles.page} ${styles.embedded}`}>
     <div className={styles.workspace}>
       <header className={styles.header}>
-        <div><Link href="/" className={styles.back}>← Back to Ledgerly</Link>
-          <h1>Ask Ledgerly</h1><p>Check your business, find records, or create something.</p>
-          <span className={styles.mobileIdentity}>{branch} · Guided financial assistant</span></div>
-        <div className={styles.identity}><strong>{organization}</strong><span>{branch} · Guided financial assistant</span></div>
+        <div className={styles.headerMain}>
+          <div className={styles.titleRow}><h1>Ask Ledgerly</h1><span className={styles.workspaceLabel}>Guided workspace</span></div>
+          <p>Your financial workspace for answers, records, and guided actions.</p>
+          <span className={styles.context}>{organization} · {branch}</span>
+        </div>
+        <div className={styles.headerActions}>
+          <div className={styles.historyWrap}>
+            <button type="button" className={styles.headerButton} aria-expanded={historyOpen}
+              aria-controls="assistant-history" onClick={() => setHistoryOpen((open) => !open)}>History</button>
+            {historyOpen && <div id="assistant-history" className={styles.historyPopover} role="status">
+              <strong>Current session</strong><span>{messages.length ? `${messages.length} ${messages.length === 1 ? "question" : "questions"}` : "No questions yet"}</span>
+              <small>Conversation history is kept in this session.</small>
+            </div>}
+          </div>
+          <button type="button" className={styles.newConversation} onClick={resetConversation} disabled={pending || Boolean(activeAction)}>
+            New conversation
+          </button>
+        </div>
       </header>
       <div ref={scroll} className={styles.conversation} role="log" aria-label="Assistant conversation" aria-live="polite">
         {activeAction === "create_invoice_draft" && <GuidedInvoice key={`${activeAction}:${handoffCustomerId || ""}`}
@@ -123,9 +142,9 @@ export function AssistantChat({ organization, branch, providerConfigured = false
         <label htmlFor="assistant-question" className={styles.srOnly}>Ask Ledgerly</label>
         <textarea ref={input} id="assistant-question" value={draft} onChange={(event) => setDraft(event.target.value)}
           onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void send(draft); } }}
-          maxLength={500} rows={2} placeholder="Ask about cash, customers, bills, sales…" />
-        <button type="submit" disabled={pending || draft.trim().length < 2}>Ask Ledgerly <span aria-hidden="true">→</span></button>
-        <small className={styles.composerMeta}><span>Financial answers are read-only. Guided creation saves only after your confirmation.</span>
+          maxLength={500} rows={2} placeholder="Ask about your business or start an action…" />
+        <button type="submit" disabled={pending || draft.trim().length < 2}>{pending ? "Checking…" : "Send"} <span aria-hidden="true">→</span></button>
+        <small className={styles.composerMeta}><span>Enter to send · Shift+Enter for a new line · answers are read-only.</span>
           <span className={styles.composerLinks}>{(["create_invoice_draft", "create_quotation_draft", "create_customer"] as const)
             .filter((id) => allowed[id]).map((id) => <button type="button" key={id} className={styles.composerAction}
               onClick={() => startAction(id)}>{actionRegistry[id].label}</button>)}</span></small>

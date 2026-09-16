@@ -1,4 +1,4 @@
-.flow{max-width:860px;margin:0 auto;color:#183126;padding:4px 0 40px}
+.flow{max-width:1040px;margin:0 auto;color:#172033;padding:4px 0 40px}
 .flow h2{font-size:27px;letter-spacing:-.03em;margin:0 0 5px}.flow h3{font-size:20px;letter-spacing:-.02em;margin:0 0 5px}
 .flow p{color:#60736a;line-height:1.5;margin:0 0 16px}.top{display:flex;justify-content:space-between;align-items:start;gap:18px;margin-bottom:18px}
 .top p{margin:0}.progress{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;list-style:none;padding:0;margin:0 0 13px}
@@ -12,7 +12,7 @@
 .field input,.field select,.field textarea{font:inherit;font-size:14px;font-weight:400;color:#183126;background:#fff;border:1px solid #cadacf;border-radius:9px;padding:10px 11px;min-height:44px;width:100%;min-width:0;outline-color:#26754d}
 .field input[readonly]{background:#f4f7f3;color:#596e5f}.field textarea{resize:vertical}
 .fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}.wide{grid-column:1/-1}
-.customerList{max-height:205px;overflow-y:auto;border:1px solid #dce7df;border-radius:10px;margin:12px 0;padding:4px}
+.customerList{border:1px solid #d8e3ed;border-radius:11px;margin:12px 0;padding:4px;background:#fbfdff}
 .customerList button{display:block;width:100%;text-align:left;border:0;border-radius:7px;background:#fff;color:#264636;padding:9px 11px;min-height:44px;cursor:pointer;font:inherit;font-size:14px}
 .customerList button:hover,.customerList button:focus-visible,.customerList button[aria-pressed=true]{background:#e9f4ec}
 .customerList p{padding:12px;margin:0}.selected{display:flex;align-items:center;gap:9px;flex-wrap:wrap;background:#edf5ef;border-radius:9px;padding:10px;margin-top:12px}
@@ -51,3 +51,31 @@
 @media(max-width:650px){.flow{padding-bottom:24px}.flow h2{font-size:23px}.flow h3{font-size:18px}.panel{padding:16px}.progress{gap:4px}.progress li{display:block;text-align:center;padding:7px 3px;font-size:10px}.progress li span{margin:0 auto 4px}.fields{gap:11px}.previewHead{display:block}.previewHead span{display:inline-block;margin:0 0 12px}.actions{justify-content:stretch}.actions>*{flex:1 1 42%}.actions .primary{flex:1 1 100%}.summary{gap:10px}.previewLines>div{flex-wrap:wrap}.previewLines b{text-align:left}.totals{max-width:none}}
 @media(max-width:390px){.progress li{font-size:9px}.panel{padding:14px}.actions>*{flex:1 1 100%}
   .duplicateRow{align-items:stretch;flex-direction:column}.switcher button{flex:1 1 44%}}
+
+/* Guided forms share the Assistant workspace's calm Ledgerly blue system. */
+.flow { color: #172033; }
+.flow p { color: #60748a; }
+.progress li { background: #f2f6fa; color: #718398; }
+.progress .current { background: #e7f1fa; color: #1f5f9d; }
+.progress .current span { background: #1f5f9d; border-color: #1f5f9d; }
+.branch { color: #63778c; }
+.branch strong { color: #24557f; }
+.panel { border-color: #d9e3ec; }
+.field { color: #36516a; }
+.field input, .field select, .field textarea { color: #172033; border-color: #c4d5e3; outline-color: #3982bb; }
+.customerList { border-color: #d8e3ed; background: #fbfdff; }
+.customerList button { color: #20354a; }
+.customerList button:hover, .customerList button:focus-visible, .customerList button[aria-pressed=true] { background: #e8f2fb; }
+.selected { background: #edf5fb; }
+.selected span, .hint { color: #60748a !important; }
+.textButton, .add, .inlineLink { color: #1f5f9d; }
+.line { border-color: #dce6ef; background: #f7fafc; }
+.primary { background: #1f5f9d; border-color: #1f5f9d; }
+.primary:hover, .primary:focus-visible { background: #174a7c; }
+.secondary { color: #24557f; border-color: #bdd1e1; }
+.secondary:hover, .secondary:focus-visible { background: #f1f7fb; }
+.previewHead span, .switcher button[aria-current=step] { color: #1f5f9d; background: #e8f2fb; border-color: #bdd5e8; }
+.switcher { border-color: #dce6ef; background: #f7fafc; }
+.switcher button { color: #24557f; border-color: #cbd9e7; }
+.totals .grand, .grand dt, .grand dd { color: #1f5f9d; border-color: #c4d5e3; }
+.success { background: #f7fbfe; }
