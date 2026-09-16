@@ -64,8 +64,8 @@ export function AssistantChat({ allowed }: { allowed: Record<string, boolean> })
       if (actionRegistry[target].status === "available" && allowed[target]) startAction(target);
       else setMessages((current) => [...current, { id, question: text, notice: actionRegistry[target].status === "available"
         ? `You do not have permission to ${actionRegistry[target].label.toLowerCase()}.`
-        : actionRegistry[target].status === "deferred" ? "Payment recording is deferred. Use Ledgerly's full workflow with its review and audit controls."
-          : "That guided action is coming next. Use the full Ledgerly form for now." }]);
+        : actionRegistry[target].status === "deferred" ? "Payment recording is deferred. Use FYNTA's full workflow with its review and audit controls."
+        : "That guided action is coming next. Use the full FYNTA form for now." }]);
       return;
     }
     const turns: ConversationTurn[] = messages.filter((m) => m.response?.toolUsed && m.response.status !== "insufficient_data")
@@ -104,7 +104,7 @@ export function AssistantChat({ allowed }: { allowed: Record<string, boolean> })
         </div></div>}
         {!activeAction && messages.length === 0 && <section className={styles.welcome}>
           <div className={styles.welcomeMark} aria-hidden="true">L</div>
-          <h1 className={styles.chatTitle}>Ask Ledgerly</h1>
+          <h1 className={styles.chatTitle}>Ask FYNTA</h1>
           <h2>What can I help you with?</h2>
           <p>Ask about your business or tell me what you&apos;d like to do.</p>
           <div className={styles.primarySuggestions}>
@@ -135,12 +135,12 @@ export function AssistantChat({ allowed }: { allowed: Record<string, boolean> })
         {!activeAction && pending && <div className={styles.loading} role="status">Checking recorded data…</div>}
       </div>
       {!activeAction ? <form className={styles.composer} onSubmit={submit}>
-        <label htmlFor="assistant-question" className={styles.srOnly}>Ask Ledgerly</label>
+        <label htmlFor="assistant-question" className={styles.srOnly}>Ask FYNTA</label>
         <span className={styles.composerSparkle} aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m12 2 1.7 6.3L20 10l-6.3 1.7L12 18l-1.7-6.3L4 10l6.3-1.7z" /><path d="m19 16 .7 2.3L22 19l-.7-2.3L19 22l-.7-2.3L16 19l2.3-.7z" /></svg></span>
         <textarea ref={input} id="assistant-question" value={draft} onChange={(event) => setDraft(event.target.value)}
           onInput={(event) => { const element = event.currentTarget; element.style.height = "auto"; element.style.height = `${Math.min(element.scrollHeight, 150)}px`; }}
           onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void send(draft); } }}
-          maxLength={500} rows={1} placeholder="Ask Ledgerly anything..." />
+          maxLength={500} rows={1} placeholder="Ask FYNTA anything..." />
         <button type="submit" aria-label={pending ? "Checking" : "Send message"} disabled={pending || draft.trim().length < 2}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 14-7-3 14-4-5-7-2Z" /><path d="m12 14 7-9" /></svg></button>
       </form> : <div className={styles.actionFooter}>Guided {actionRegistry[activeAction].label} ·
         No record is created until you explicitly confirm its preview.</div>}

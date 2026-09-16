@@ -8,19 +8,19 @@ web
 
 ## Users
 
-Small-business owners and operators using Ledgerly to understand financial records and complete guided accounting actions.
+Small-business owners and operators using FYNTA to understand financial records and complete guided accounting actions.
 
 ## Product Purpose
 
-Ledgerly provides a tenant-scoped accounting workspace for financial records, summaries, and guided writes. Success means users can ask natural-language questions or start an action without learning where every accounting feature lives.
+FYNTA provides a tenant-scoped accounting workspace for financial records, summaries, and guided writes. Success means users can ask natural-language questions or start an action without learning where every accounting feature lives.
 
 ## Positioning
 
-Ask Ledgerly combines grounded accounting answers with confirmation-first guided actions inside one conversation.
+Ask FYNTA combines grounded accounting answers with confirmation-first guided actions inside one conversation.
 
 ## Operating Context
 
-Users work within a selected organization and branch. Today/Home is the business overview; Ask Ledgerly is the conversation surface for asking about records and initiating actions.
+Users work within a selected organization and branch. Today/Home is the business overview; Ask FYNTA is the conversation surface for asking about records and initiating actions.
 
 ## Capabilities and Constraints
 
@@ -31,7 +31,7 @@ Users work within a selected organization and branch. Today/Home is the business
 
 ## Brand Commitments
 
-Preserve the Ledgerly name, existing typography, blue accent, border language, and accounting terminology. Avoid presenting Ask Ledgerly as a KPI dashboard.
+Use the approved FYNTA logo and uppercase brand presentation with the existing typography, blue accent, border language, and accounting terminology. Avoid presenting Ask FYNTA as a KPI dashboard.
 
 ## Evidence on Hand
 

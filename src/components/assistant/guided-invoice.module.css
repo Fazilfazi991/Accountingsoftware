@@ -52,7 +52,7 @@
 @media(max-width:390px){.progress li{font-size:9px}.panel{padding:14px}.actions>*{flex:1 1 100%}
   .duplicateRow{align-items:stretch;flex-direction:column}.switcher button{flex:1 1 44%}}
 
-/* Guided forms share the Assistant workspace's calm Ledgerly blue system. */
+/* Guided forms share the Assistant workspace's calm FYNTA blue system. */
 .flow { color: #172033; }
 .flow p { color: #60748a; }
 .progress li { background: #f2f6fa; color: #718398; }

@@ -78,7 +78,7 @@ async function searchTransactions(client: Client, context: AuthContext, args: Re
   const rows = matches.flatMap((m) => m.found).sort((a, b) => args.sort === "amount_desc" ? b.numericAmount - a.numericAmount : b.date.localeCompare(a.date)).slice(0, number(args.limit || 10));
   const answer = base("search_transactions", rows.length ? `I found ${rows.length} posted transaction${rows.length === 1 ? "" : "s"} matching your filters.${args.type === "outflow" ? " This includes supplier payments and expenses, not every possible cash journal movement." : ""}` : "No posted transactions matched those filters.");
   answer.rows = rows.map(({ label, detail, amount, href }) => ({ label, detail, amount, ...(href ? { href } : {}) }));
-  answer.sources = ["Posted Ledgerly documents in the selected branch; drafts and voids excluded."];
+  answer.sources = ["Posted FYNTA documents in the selected branch; drafts and voids excluded."];
   answer.followUpSuggestions = ["What happened yesterday?"];
   return answer;
 }

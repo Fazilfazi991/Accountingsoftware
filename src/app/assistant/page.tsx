@@ -6,7 +6,7 @@ import { canCreateAssistantQuotation } from "@/app/actions/assistant-quotation";
 import { canCreateAssistantCustomer } from "@/app/actions/assistant-customer";
 import { AiWorkspaceShell } from "@/components/product-workspace";
 
-export const metadata: Metadata = { title: "Ledgerly Assistant", description: "Ask grounded questions about your business" };
+export const metadata: Metadata = { title: "Ask FYNTA", description: "Ask grounded questions about your business" };
 export default async function AssistantPage() {
   const context = await requireOrganizationContext();
   const [invoiceAllowed, quotationAllowed, customerAllowed] = await Promise.all([

@@ -7,7 +7,7 @@ const groups: readonly NavigationGroup[] = primaryNavigation;
 describe("product navigation", () => {
   it("keeps Today as Home, Dashboard as Overview, and Assistant as a direct destination", () => {
     expect(groups.slice(0, 3).map(({ label, href }) => [label, href])).toEqual([
-      ["Home", "/"], ["Overview", "/overview"], ["Ask Ledgerly", "/assistant"],
+      ["Home", "/"], ["Overview", "/overview"], ["Ask FYNTA", "/assistant"],
     ]);
   });
 

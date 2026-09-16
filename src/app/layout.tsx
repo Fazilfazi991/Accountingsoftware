@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Ledgerly",
-  description: "Ledgerly UAE accounting workspace",
+  title: "FYNTA",
+  description: "FYNTA UAE accounting workspace",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

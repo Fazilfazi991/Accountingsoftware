@@ -65,7 +65,7 @@ export function GuidedCustomer({ onClose, onSwitch, allowed, returnTo }: {
     <button type="button" className={styles.secondary} onClick={close}>Back to Assistant</button></section>;
   if (!data) return <section className={styles.flow} role="status"><h2>Add Customer</h2><p>Checking existing customers…</p></section>;
   return <section className={styles.flow} aria-label="Guided customer creation">
-    <div className={styles.top}><div><h2>Add Customer</h2><p>Add a customer using Ledgerly&apos;s existing customer form rules.</p></div>
+    <div className={styles.top}><div><h2>Add Customer</h2><p>Add a customer using FYNTA&apos;s existing customer form rules.</p></div>
       {!["saving", "uncertain"].includes(stage) && <button type="button" className={styles.textButton} onClick={close}>
         {stage === "success" ? "Back to Assistant" : "Cancel"}</button>}</div>
     <div className={styles.branch}>Current branch: <strong>{data.branch.name}</strong> · Saved in your current company.</div>

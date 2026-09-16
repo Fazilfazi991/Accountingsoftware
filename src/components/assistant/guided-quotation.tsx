@@ -94,7 +94,7 @@ export function GuidedQuotation({ onClose, onSwitch, allowed, initialCustomerId 
   if (!data) return <section className={styles.flow} role="status"><h2>Create Quotation</h2>
     <p>Loading active customers, products, accounts and sales tax rates…</p></section>;
   return <section className={styles.flow} aria-label="Guided quotation creation">
-    <div className={styles.top}><div><h2>Create Quotation</h2><p>Prepare a quotation using Ledgerly&apos;s existing sales workflow.</p></div>
+    <div className={styles.top}><div><h2>Create Quotation</h2><p>Prepare a quotation using FYNTA&apos;s existing sales workflow.</p></div>
       {!["saving", "uncertain"].includes(stage) && <button type="button" className={styles.textButton} onClick={close}>
         {stage === "success" ? "Back to Assistant" : "Cancel"}</button>}</div>
     {!["success", "uncertain"].includes(stage) && <ol className={styles.progress} aria-label="Quotation steps">

@@ -47,7 +47,7 @@ describe("Today operating states", () => {
     const html = renderToStaticMarkup(<TodayView data={{ ...base, name: "ledgerly-qa-user-a", attention,
       recommendation: { ...attention[0], heading: "Collect from Customer A today.", explanation: "Review the open invoice." } } as TodayData} />);
     expect(html.indexOf("/sales/invoices/first")).toBeLessThan(html.indexOf("/purchases/bills/second"));
-    expect(html).toContain("Ledgerly recommends");
+    expect(html).toContain("FYNTA recommends");
     expect(html).toContain("Review invoice →");
     expect(html).toContain(", there");
   });

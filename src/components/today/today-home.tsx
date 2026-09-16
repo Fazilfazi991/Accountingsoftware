@@ -15,7 +15,7 @@ export async function TodayHome({ route = "/today" }: { route?: "/" | "/today" }
   const today = calendarDate(context.payload.organization.timezone || "Asia/Dubai");
   const data = await getTodayData(context, today);
   return <ProductWorkspace context={context.payload} route={route}
-    topbar={<Link href="/today" className="topbar-page-name">Ledgerly <span>/ Today</span></Link>}>
+    topbar={<Link href="/today" className="topbar-page-name">FYNTA <span>/ Today</span></Link>}>
     <TodayView data={data} />
   </ProductWorkspace>;
 }

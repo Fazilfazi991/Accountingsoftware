@@ -15,6 +15,7 @@ import {
   OrganizationProvider,
   useOrganizationContext,
 } from "@/components/app-shell";
+import { BrandLogo } from "@/components/brand-logo";
 import { AccountingMasters } from "@/components/accounting-masters";
 import {
   EditJournal,
@@ -2160,7 +2161,7 @@ function Reconciliation() {
           />
         </section>
         <section className="panel">
-          <h2>Ledgerly transactions</h2>
+          <h2>FYNTA transactions</h2>
           <Table
             headers={[
               "Date",
@@ -3054,8 +3055,8 @@ function App({ path }: { path: string[] }) {
     <div className="app">
       <aside className="sidebar">
         <div className="brand">
-          <span className="brand-mark">L</span>
-          <b>Ledgerly</b>
+          <BrandLogo variant="dark" className="brand-logo" />
+          <span className="brand-collapsed-mark" aria-hidden="true">F</span>
         </div>
         <div className="company">
           <span>Horizon Trading LLC</span>

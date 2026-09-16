@@ -3,7 +3,7 @@ import type { NavigationGroup } from "@/components/app-shell";
 export const primaryNavigation = [
   { label: "Home", icon: "home", href: "/" },
   { label: "Overview", icon: "overview", href: "/overview" },
-  { label: "Ask Ledgerly", icon: "assistant", href: "/assistant" },
+  { label: "Ask FYNTA", icon: "assistant", href: "/assistant" },
   { label: "Ask General", icon: "assistant", href: "/general" },
   {
     label: "Sales",

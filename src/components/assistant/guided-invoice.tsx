@@ -113,7 +113,7 @@ export function GuidedInvoice({ onClose, onSwitch, allowed, initialCustomerId }:
   if (!data || state.stage === "idle") return <section className={styles.flow} role="status"><h2>Create Invoice</h2>
     <p>Loading customers, products, tax rates and stock for this branch…</p></section>;
   return <section className={styles.flow} aria-label="Guided invoice creation">
-    <div className={styles.top}><div><h2>Create Invoice</h2><p>Prepare a sales invoice draft with Ledgerly’s existing workflow.</p></div>
+    <div className={styles.top}><div><h2>Create Invoice</h2><p>Prepare a sales invoice draft with FYNTA’s existing workflow.</p></div>
       {!["saving", "checking", "uncertain"].includes(state.stage) && <button type="button" className={styles.textButton} onClick={cancel}>{state.stage === "success" ? "Back to Assistant" : "Cancel"}</button>}</div>
     {!["success", "uncertain", "checking"].includes(state.stage) && <ol className={styles.progress} aria-label="Invoice steps">
       {stages.map((label, index) => <li key={label} className={label.toLowerCase() === state.stage ? styles.current :
@@ -194,7 +194,7 @@ export function GuidedInvoice({ onClose, onSwitch, allowed, initialCustomerId }:
     {["preview", "saving"].includes(state.stage) && <div className={styles.panel}>
       <div className={styles.previewHead}><div><h3>Invoice Preview</h3><p>{state.stage === "saving"
         ? "Saving is in progress. The result is not confirmed yet."
-        : "Nothing has been saved yet. Ledgerly will create a draft only after confirmation."}</p></div>
+        : "Nothing has been saved yet. FYNTA will create a draft only after confirmation."}</p></div>
         <span>Draft · not posted</span></div>
       <dl className={styles.summary}><div><dt>Customer</dt><dd>{customer?.name || "—"}</dd></div>
         <div><dt>Invoice date</dt><dd>{state.documentDate}</dd></div><div><dt>Due date</dt><dd>{state.dueDate}</dd></div>
@@ -206,7 +206,7 @@ export function GuidedInvoice({ onClose, onSwitch, allowed, initialCustomerId }:
       <dl className={styles.totals}><div><dt>Subtotal after discount</dt><dd>{money(totals.subtotal)}</dd></div>
         {totals.discount > 0 && <div><dt>Discount included</dt><dd>{money(totals.discount)}</dd></div>}
         <div><dt>VAT</dt><dd>{money(totals.vat)}</dd></div><div className={styles.grand}><dt>Preview total</dt><dd>{money(totals.total)}</dd></div></dl>
-      <p className={styles.hint}>Preview uses the same calculation as the full invoice form. Booked amounts remain determined by Ledgerly when posted.</p>
+      <p className={styles.hint}>Preview uses the same calculation as the full invoice form. Booked amounts remain determined by FYNTA when posted.</p>
       {state.error && <p role="alert" className={styles.error}>{state.error}</p>}
       <div className={styles.actions}><button type="button" className={styles.secondary} disabled={state.stage === "saving"}
         onClick={() => dispatch({ type: "edit", stage: "items" })}>Edit items</button>
@@ -230,7 +230,7 @@ export function GuidedInvoice({ onClose, onSwitch, allowed, initialCustomerId }:
     {state.stage === "uncertain" && <div className={styles.panel} role="alert"><h3>Save result needs checking</h3>
       <p className={styles.error}>{state.error}</p>
       {!state.error.includes("Start a new action") && !state.error.includes("Start this action again") &&
-        <p>Retry uses the same request ID. Ledgerly will return the original draft if it was created.</p>}
+        <p>Retry uses the same request ID. FYNTA will return the original draft if it was created.</p>}
       <div className={styles.actions}>{!state.error.includes("Start a new action") && !state.error.includes("Start this action again") &&
         <button type="button" className={styles.primary} onClick={() => void confirm()}>Retry safely</button>}
         <Link className={styles.secondary} href="/sales/invoices">Check Sales Invoices</Link>

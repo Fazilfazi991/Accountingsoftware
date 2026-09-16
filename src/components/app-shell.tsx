@@ -15,6 +15,7 @@ import { useRouter } from "next/navigation";
 import { selectBranch, selectOrganization } from "@/app/actions/organization";
 import { SignOutButton } from "@/components/sign-out-button";
 import type { OrganizationContextPayload } from "@/lib/organization-context";
+import { BrandLogo } from "@/components/brand-logo";
 
 export type NavigationIcon =
   | "home"
@@ -205,7 +206,8 @@ export function Sidebar({ groups, route, collapsed, onToggleCollapsed, onNavigat
   return (
     <aside className={collapsed ? "sidebar collapsed" : "sidebar"}>
       <div className="brand">
-        <span className="brand-mark">L</span><b>Ledgerly</b>
+        <BrandLogo variant="dark" className="brand-logo" />
+        <span className="brand-collapsed-mark" aria-hidden="true">F</span>
         <button className="mobile-close" aria-label="Close navigation" onClick={onNavigate}><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18" /></svg></button>
       </div>
       <OrganizationIdentity />
@@ -243,7 +245,7 @@ export function Sidebar({ groups, route, collapsed, onToggleCollapsed, onNavigat
         })}
       </nav>
       <button aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} className="sidebar-toggle" onClick={onToggleCollapsed} type="button"><svg aria-hidden="true" viewBox="0 0 24 24"><path d={collapsed ? "m9 5 7 7-7 7" : "m15 5-7 7 7 7"} /></svg><span>{collapsed ? "Expand" : "Collapse"}</span></button>
-      <div className="demo-label">Ledgerly accounting workspace</div>
+      <div className="demo-label">FYNTA accounting workspace</div>
     </aside>
   );
 }

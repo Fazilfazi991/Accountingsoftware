@@ -146,7 +146,7 @@ function SettlementList({ kind, data }: { kind: Kind; data: SettlementData }) {
       <div className="page-header">
         <div>
           <h1>{title[kind]}</h1>
-          <p>Live transactions and posting status from Ledgerly.</p>
+          <p>Live transactions and posting status from FYNTA.</p>
         </div>
         <Link className="button" href={`${pathFor[kind]}/new`}>
           + New

@@ -47,7 +47,7 @@ export function DocumentPrint({ kind, id }: { kind: string; id: string }) {
       </div>
       <header>
         <div>
-          <div className="print-brand">Ledgerly</div>
+          <div className="print-brand">FYNTA</div>
           <h1>{o.legalName || o.name}</h1>
           <p>{o.address || "United Arab Emirates"}</p>
           <p>{[o.email, o.phone].filter(Boolean).join(" · ")}</p>

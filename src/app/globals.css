@@ -114,7 +114,8 @@ body,.main{overflow-x:hidden}.app,.content,.dashboard-grid,.panel{min-width:0}
 .sidebar.collapsed { width: 72px; flex-basis: 72px; }
 .sidebar .brand { min-height: 46px; padding: 0 8px 14px; gap: 10px; overflow: hidden; }
 .sidebar .brand-mark { flex: 0 0 30px; width: 30px; height: 30px; border-radius: 8px; }
-.sidebar .brand b { white-space: nowrap; }
+.sidebar .brand-logo { width: 132px; height: 34px; object-fit: cover; object-position: center; }
+.brand-collapsed-mark { display: none; place-items: center; width: 30px; height: 30px; border-radius: 8px; color: #fff; background: #2874c6; font-weight: 800; }
 .sidebar .company { min-height: 59px; margin-bottom: 12px; overflow: hidden; transition: opacity .16s ease; }
 .sidebar.collapsed .brand b,
 .sidebar.collapsed .company,
@@ -122,6 +123,8 @@ body,.main{overflow-x:hidden}.app,.content,.dashboard-grid,.panel{min-width:0}
 .sidebar.collapsed .nav-label,
 .sidebar.collapsed .nav-chevron,
 .sidebar.collapsed .sidebar-toggle span { display: none; }
+.sidebar.collapsed .brand-logo { display: none; }
+.sidebar.collapsed .brand-collapsed-mark { display: grid; }
 .desktop-nav { display: grid; gap: 4px; }
 .primary-nav-item {
   position: relative;
@@ -328,8 +331,8 @@ body { background: #f4f7fb; }
 /* Dedicated AI workspace shell. Accounting navigation is intentionally absent here. */
 .ai-app { display: flex; width: 100%; height: 100dvh; min-height: 0; overflow: hidden; background: #f6f9fc; }
 .ai-sidebar { width: 248px; flex: 0 0 248px; min-height: 0; display: flex; flex-direction: column; padding: 20px 14px 16px; overflow: hidden; color: #dbe7f3; background: #13263e; }
-.ai-brand { display: flex; align-items: center; gap: 10px; padding: 0 10px 20px; color: #fff; font-size: 18px; letter-spacing: -.03em; }
-.ai-brand .brand-mark { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 8px; color: #fff; background: #2874c6; font-size: 15px; font-weight: 800; }
+.ai-brand { display: flex; align-items: center; gap: 10px; padding: 0 10px 20px; color: #fff; }
+.ai-brand-logo { width: 132px; height: 34px; object-fit: cover; object-position: center; }
 .ai-new-chat { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 42px; margin-bottom: 22px; border: 1px solid #5d8fbe; border-radius: 9px; color: #fff; background: #24517d; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
 .ai-new-chat:hover, .ai-new-chat:focus-visible { background: #2d6396; }
 .ai-new-chat svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
@@ -349,6 +352,12 @@ body { background: #f4f7fb; }
 .ai-sidebar-backdrop { display: none; }
 .ai-main > .content { min-height: 0; flex: 1 1 auto; overflow: hidden; padding: 0; }
 .ai-main .product-content-assistant { overflow: hidden; }
+.auth-brand-logo { width: 154px; height: 38px; object-fit: cover; object-position: center; }
+.route-loading { min-height: 100dvh; display: grid; place-content: center; justify-items: center; gap: 12px; color: #52677f; background: #f6f9fc; }
+.route-loading p { margin: 0; font-size: 13px; }
+.route-spinner { width: 24px; height: 24px; border: 2px solid #cdddec; border-top-color: #2874c6; border-radius: 50%; animation: route-spin .65s linear infinite; }
+@keyframes route-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .route-spinner { animation: none; } }
 @media (max-width: 760px) {
   .ai-app { background: #fff; }
   .ai-sidebar { position: fixed; inset: 0 auto 0 0; z-index: 60; width: min(300px, 86vw); transform: translateX(-105%); transition: transform .2s cubic-bezier(.16,1,.3,1); box-shadow: 12px 0 34px #07111f3d; }

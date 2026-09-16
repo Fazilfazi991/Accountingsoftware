@@ -34,7 +34,7 @@ export function TodayView({ data }: { data: TodayData }) {
             : <><div className={styles.attentionRows}>{data.attention.slice(0, 4).map((item, index) => <Link href={item.href} className={`${styles.actionRow} ${index === 0 ? styles.firstAction : ""}`} key={item.id}>
               <span className={`${styles.marker} ${item.title.includes("overdue collection") ? styles.urgent : ""}`}>{item.title.includes("overdue collection") ? "Collect" : "Pay"}</span>
               <span className={styles.rowText}><b>{item.title}</b><small>{item.detail}</small><em>{item.action} →</em></span><strong>{m(item.amount)}</strong></Link>)}</div>{data.attention.length > 4 && <p className={styles.more}>Showing the first 4 of {data.attention.length} ranked items.</p>}</>}</section>
-      <section className={`${styles.panel} ${styles.recommendation}`} aria-labelledby="recommend-title"><h2 id="recommend-title">Ledgerly recommends</h2>
+      <section className={`${styles.panel} ${styles.recommendation}`} aria-labelledby="recommend-title"><h2 id="recommend-title">FYNTA recommends</h2>
         <p className={styles.recommendLead}>{data.recommendation ? `Collect ${m(data.recommendation.amount)} from ${data.recommendation.title.split(" · ")[0]} today.` : "Keep your collections on track"}</p>
         <p>{data.recommendation ? data.recommendation.explanation : "No overdue customer invoice qualifies for a collection recommendation today."}</p>
         {data.recommendation && <Link href={data.recommendation.href} className={styles.button}>Review invoice →</Link>}<small>Based on posted open invoices, not AI advice</small></section>

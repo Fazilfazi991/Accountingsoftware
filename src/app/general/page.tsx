@@ -3,7 +3,7 @@ import { requireOrganizationContext } from "@/lib/organization-context";
 import { AiWorkspaceShell } from "@/components/product-workspace";
 import { GeneralChat } from "@/components/general-chat";
 
-export const metadata: Metadata = { title: "Ask General · Ledgerly", description: "Ask questions and work through everyday tasks" };
+export const metadata: Metadata = { title: "Ask General · FYNTA", description: "Ask questions and work through everyday tasks" };
 
 export default async function GeneralPage() {
   const context = await requireOrganizationContext();
