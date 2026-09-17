@@ -1,7 +1,8 @@
 "use client";
-/* eslint-disable react/jsx-key */
+/* eslint-disable react/jsx-key, @typescript-eslint/no-explicit-any */
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { FormEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -16,32 +17,32 @@ import {
   useOrganizationContext,
 } from "@/components/app-shell";
 import { BrandLogo } from "@/components/brand-logo";
-import { AccountingMasters } from "@/components/accounting-masters";
-import {
-  EditJournal,
-  JournalDetail as RealJournalDetail,
-  MultiLineJournal,
-  PostingReports,
-} from "@/components/posting-reports";
 import {
   createBranch,
   updateBranch,
   updateCompany,
 } from "@/app/actions/organization";
 import type { OrganizationContextPayload } from "@/lib/organization-context";
-import { SettlementWorkflows } from "@/components/settlement-workflows";
-import { SourceDocumentSettlements } from "@/components/source-document-settlements";
-import { ExpenseWorkflow } from "@/components/expense-workflow";
-import { StatementsReports } from "@/components/statements-reports";
-import { LiveDashboard } from "@/components/live-dashboard";
-import { InventoryWorkflow } from "@/components/inventory-workflow";
-import { BusinessDocumentWorkflow } from "@/components/business-document-workflow";
-import { VatReports } from "@/components/vat-reports";
-import { FinancialStatements } from "@/components/financial-statements";
-import { ControlsWorkspace } from "@/components/controls-workspace";
-import { DocumentPrint } from "@/components/document-print";
-import { SalesWorkflow } from "@/components/sales-workflow";
 import { primaryNavigation } from "@/components/primary-navigation";
+
+const load = (loader:()=>Promise<any>, name:string) => dynamic<any>(() => loader().then((module:any)=>module[name]), { loading:()=> <div className="route-skeleton" aria-label="Loading module" /> });
+const AccountingMasters=load(()=>import("@/components/accounting-masters"),"AccountingMasters");
+const EditJournal=load(()=>import("@/components/posting-reports"),"EditJournal");
+const RealJournalDetail=load(()=>import("@/components/posting-reports"),"JournalDetail");
+const MultiLineJournal=load(()=>import("@/components/posting-reports"),"MultiLineJournal");
+const PostingReports=load(()=>import("@/components/posting-reports"),"PostingReports");
+const SettlementWorkflows=load(()=>import("@/components/settlement-workflows"),"SettlementWorkflows");
+const SourceDocumentSettlements=load(()=>import("@/components/source-document-settlements"),"SourceDocumentSettlements");
+const ExpenseWorkflow=load(()=>import("@/components/expense-workflow"),"ExpenseWorkflow");
+const StatementsReports=load(()=>import("@/components/statements-reports"),"StatementsReports");
+const LiveDashboard=load(()=>import("@/components/live-dashboard"),"LiveDashboard");
+const InventoryWorkflow=load(()=>import("@/components/inventory-workflow"),"InventoryWorkflow");
+const BusinessDocumentWorkflow=load(()=>import("@/components/business-document-workflow"),"BusinessDocumentWorkflow");
+const VatReports=load(()=>import("@/components/vat-reports"),"VatReports");
+const FinancialStatements=load(()=>import("@/components/financial-statements"),"FinancialStatements");
+const ControlsWorkspace=load(()=>import("@/components/controls-workspace"),"ControlsWorkspace");
+const DocumentPrint=load(()=>import("@/components/document-print"),"DocumentPrint");
+const SalesWorkflow=load(()=>import("@/components/sales-workflow"),"SalesWorkflow");
 
 const groups = [
   ["", [["Home", "/"]]],
