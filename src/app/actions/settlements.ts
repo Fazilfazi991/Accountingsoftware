@@ -26,6 +26,7 @@ export type SettlementData = {
   creditNotes: any[];
   creditLines: any[];
   receipts: any[];
+  receiptLegs: any[];
   debitNotes: any[];
   debitLines: any[];
   payments: any[];
@@ -90,6 +91,7 @@ export async function getSettlementData(): Promise<
       creditNotes,
       creditLines,
       receipts,
+      receiptLegs,
       debitNotes,
       debitLines,
       payments,
@@ -165,10 +167,11 @@ export async function getSettlementData(): Promise<
       client
         .from("customer_receipts")
         .select(
-          "id,customer_id,receipt_number,receipt_date,cash_account_id,amount,reference,notes,status,posted_journal_id",
+          "id,customer_id,receipt_number,receipt_date,cash_account_id,amount,payment_mode,reference,notes,status,posted_journal_id",
         )
         .eq("organization_id", org)
         .order("created_at", { ascending: false }),
+      client.from("customer_receipt_payment_legs").select("id,customer_receipt_id,method,account_id,amount").eq("organization_id", org).order("created_at"),
       client
         .from("purchase_debit_notes")
         .select(
@@ -223,6 +226,7 @@ export async function getSettlementData(): Promise<
       creditNotes,
       creditLines,
       receipts,
+      receiptLegs,
       debitNotes,
       debitLines,
       payments,
@@ -246,6 +250,7 @@ export async function getSettlementData(): Promise<
       creditNotes: plain(creditNotes.data),
       creditLines: plain(creditLines.data),
       receipts: plain(receipts.data),
+      receiptLegs: plain(receiptLegs.data),
       debitNotes: plain(debitNotes.data),
       debitLines: plain(debitLines.data),
       payments: plain(payments.data),
@@ -360,6 +365,8 @@ const payment = z.object({
   amount,
   reference: text,
   notes: text,
+  paymentMode: z.enum(["cash", "bank_card", "credit_card", "split"]).default("cash"),
+  paymentLegs: z.array(z.object({ method: z.enum(["cash", "bank_card", "credit_card"]), accountId: uuid, amount })).min(1),
 });
 export async function saveReceipt(
   input: z.infer<typeof payment>,
@@ -383,6 +390,8 @@ export async function saveReceipt(
         p_branch_id: context.branch.id,
         p_reference: d.reference || null,
         p_notes: d.notes || null,
+        p_payment_mode: d.paymentMode,
+        p_payment_legs: d.paymentLegs.map((leg) => ({ method:leg.method, account_id:leg.accountId, amount:leg.amount })),
       })
     : call("create_customer_receipt_draft", {
         p_organization_id: context.organization.id,
@@ -394,6 +403,8 @@ export async function saveReceipt(
         p_branch_id: context.branch.id,
         p_reference: d.reference || null,
         p_notes: d.notes || null,
+        p_payment_mode: d.paymentMode,
+        p_payment_legs: d.paymentLegs.map((leg) => ({ method:leg.method, account_id:leg.accountId, amount:leg.amount })),
       });
 }
 export async function postReceipt(

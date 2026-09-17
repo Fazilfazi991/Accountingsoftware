@@ -20,6 +20,9 @@ import {
   saveSupplierPayment,
   type SettlementData,
 } from "@/app/actions/settlements";
+import { SearchableSelector } from "@/components/searchable-selector";
+import { searchMasterRecords } from "@/app/actions/master-search";
+import { paymentLegError, type PaymentLeg, type PaymentMethod } from "@/lib/payment-legs";
 
 type Kind = "credit" | "receipt" | "debit" | "payment";
 const AED = new Intl.NumberFormat("en-AE", {
@@ -238,6 +241,9 @@ function SettlementForm({
     record?.cash_account_id || data.accounts[0]?.id || "",
   );
   const [amount, setAmount] = useState(String(record?.amount || ""));
+  const existingReceiptLegs = kind === "receipt" && record ? data.receiptLegs.filter((leg:any)=>leg.customer_receipt_id===record.id) : [];
+  const [paymentMode, setPaymentMode] = useState<"cash"|"bank_card"|"credit_card"|"split">(record?.payment_mode || (data.accounts.find((x)=>x.id===record?.cash_account_id)?.account_type==="bank"?"bank_card":"cash"));
+  const [paymentLegs, setPaymentLegs] = useState<PaymentLeg[]>(existingReceiptLegs.length?existingReceiptLegs.map((leg:any)=>({method:leg.method,accountId:leg.account_id,amount:n(leg.amount)})):[{method:"cash",accountId:record?.cash_account_id||data.accounts.find((x)=>x.account_type==="cash")?.id||data.accounts[0]?.id||"",amount:n(record?.amount)}]);
   const [reference, setReference] = useState(record?.reference || "");
   const [notes, setNotes] = useState(record?.notes || "");
   const [busy, setBusy] = useState(false);
@@ -284,6 +290,8 @@ function SettlementForm({
     0,
   );
   const paidAmount = n(amount);
+  const effectiveLegs = kind === "receipt" ? (paymentMode === "split" ? paymentLegs : [{ method: paymentMode as PaymentMethod, accountId, amount: paidAmount }]) : [];
+  const legError = kind === "receipt" ? paymentLegError(paidAmount, effectiveLegs) : null;
   const exact =
     paidAmount > 0 && Math.abs(allocationTotal - paidAmount) < 0.000001;
   const eligibleQuantity = (line: any) => {
@@ -381,7 +389,10 @@ function SettlementForm({
       amount: paidAmount,
       reference,
       notes,
+      paymentMode,
+      paymentLegs: effectiveLegs,
     };
+    if (kind === "receipt" && legError) { setNotice(legError); return; }
     return run(
       kind === "receipt" ? saveReceipt(input) : saveSupplierPayment(input),
       (r) => router.push(`${pathFor[kind]}/${r.id || record.id}`),
@@ -442,25 +453,9 @@ function SettlementForm({
       <section className="panel form-panel settlement-form">
         {notice && <p className="error">{notice}</p>}
         <div className="form-grid">
-          <label>
-            {kind === "credit" || kind === "receipt" ? "Customer" : "Supplier"}
-            <select
-              value={partyId}
-              disabled={isPosted || (!!record && isSource)}
-              onChange={(e) => {
-                setPartyId(e.target.value);
-                setSourceId("");
-                setReturnFlags({});
-              }}
-            >
-              <option value="">Select…</option>
-              {parties.map((x) => (
-                <option key={x.id} value={x.id}>
-                  {x.name}
-                </option>
-              ))}
-            </select>
-          </label>
+          <SearchableSelector label={kind === "credit" || kind === "receipt" ? "Customer" : "Supplier"} value={partyId} disabled={isPosted || (!!record && isSource)}
+            options={parties.map((x)=>({id:x.id,label:x.name}))}
+            search={(query)=>searchMasterRecords(kind==="credit"||kind==="receipt"?"customer":"supplier",query)} onChange={(value)=>{setPartyId(value);setSourceId("");setReturnFlags({});}} required />
           {isSource ? (
             <label>
               {kind === "credit"
@@ -484,7 +479,11 @@ function SettlementForm({
                 ))}
               </select>
             </label>
-          ) : (
+          ) : kind === "receipt" ? (<>
+            <label>Payment mode<select value={paymentMode} disabled={isPosted} onChange={(e)=>{const mode=e.target.value as typeof paymentMode;setPaymentMode(mode);if(mode!=="split"){const type=mode==="cash"?"cash":"bank";setAccount(data.accounts.find((x)=>x.account_type===type)?.id||"");}}}><option value="cash">Cash</option><option value="bank_card">Bank / Card</option><option value="credit_card">Credit Card</option><option value="split">Split</option></select></label>
+            {paymentMode!=="split"&&<SearchableSelector label={paymentMode==="cash"?"Cash account":paymentMode==="credit_card"?"Card / clearing account":"Bank account"} value={accountId} disabled={isPosted}
+              options={data.accounts.filter((x)=>paymentMode==="cash"?x.account_type==="cash":x.account_type==="bank").map((x)=>({id:x.id,label:x.name,description:x.account_type}))} onChange={setAccount} required />}
+          </>) : (
             <label>
               Cash / Bank account
               <select
@@ -532,6 +531,13 @@ function SettlementForm({
             />
           </label>
         </div>
+        {kind==="receipt"&&paymentMode==="split"&&<div className="split-payments"><div className="line-head"><h2>Payment breakdown</h2><button type="button" className="text-button" onClick={()=>setPaymentLegs((legs)=>[...legs,{method:"cash",accountId:data.accounts.find((x)=>x.account_type==="cash")?.id||"",amount:0}])}>+ Add payment method</button></div>
+          {paymentLegs.map((leg,index)=><div className="split-payment-row" key={index}><label>Method<select value={leg.method} onChange={(e)=>{const method=e.target.value as PaymentMethod;setPaymentLegs((legs)=>legs.map((item,i)=>i===index?{...item,method,accountId:data.accounts.find((x)=>x.account_type===(method==="cash"?"cash":"bank"))?.id||""}:item))}}><option value="cash">Cash</option><option value="bank_card">Bank / Card</option><option value="credit_card">Credit Card</option></select></label>
+            <SearchableSelector label="Account" value={leg.accountId} options={data.accounts.filter((x)=>x.account_type===(leg.method==="cash"?"cash":"bank")).map((x)=>({id:x.id,label:x.name,description:x.account_type}))} search={(query)=>searchMasterRecords("account",query)} onChange={(value)=>setPaymentLegs((legs)=>legs.map((item,i)=>i===index?{...item,accountId:value}:item))}/>
+            <label>Amount<input type="number" min="0.01" step="0.01" value={leg.amount||""} onChange={(e)=>setPaymentLegs((legs)=>legs.map((item,i)=>i===index?{...item,amount:n(e.target.value)}:item))}/></label>
+            <button type="button" className="icon-button" aria-label="Remove payment method" disabled={paymentLegs.length===1} onClick={()=>setPaymentLegs((legs)=>legs.filter((_,i)=>i!==index))}>×</button></div>)}
+          <div className="totals"><span>Total allocated <b>{money(effectiveLegs.reduce((sum,leg)=>sum+leg.amount,0))}</b></span><span>Remaining <b>{money(Math.max(0,paidAmount-effectiveLegs.reduce((sum,leg)=>sum+leg.amount,0)))}</b></span></div>{legError&&<p className="error">{legError}</p>}
+        </div>}
         <label className="wide-label">
           Notes
           <textarea
