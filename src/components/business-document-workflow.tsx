@@ -12,6 +12,8 @@ import {
 import { getConversionSources, saveConvertedInvoice } from "@/app/actions/sales-workflow";
 import { dubaiCalendarDate } from "@/lib/dubai-date";
 import { calculateBusinessDocumentTotals } from "@/lib/business-document-totals";
+import { SearchableSelector } from "@/components/searchable-selector";
+import { searchMasterRecords } from "@/app/actions/master-search";
 import { normalizeToPrimary, rateForUnit, validProductUnits } from "@/lib/uom";
 import {
   newLine,
@@ -45,6 +47,10 @@ export function BusinessDocumentWorkflow({
     [dueDate, setDue] = useState(today),
     [reference, setReference] = useState(""),
     [notes, setNotes] = useState(""),
+    [invoiceDiscountType, setInvoiceDiscountType] = useState<"fixed" | "percentage">("fixed"),
+    [invoiceDiscountValue, setInvoiceDiscountValue] = useState(0),
+    [vatTreatment, setVatTreatment] = useState<"affects_vat" | "post_tax">("affects_vat"),
+    [roundOff, setRoundOff] = useState(0),
     [lines, setLines] = useState<Line[]>([]),
     dirty = useRef({ party:false, reference:false, lines:false });
   useEffect(() => {
@@ -68,6 +74,7 @@ export function BusinessDocumentWorkflow({
         setDue(doc.due_date);
         setReference(doc.reference || "");
         setNotes(doc.notes || "");
+        if (kind === "invoice") { setInvoiceDiscountType(doc.invoice_discount_type || "fixed"); setInvoiceDiscountValue(Number(doc.invoice_discount_value || 0)); setVatTreatment(doc.vat_treatment || "affects_vat"); setRoundOff(Number(doc.round_off || 0)); }
         setLines(
           sourceLines.map((x: any) => ({
             productId: x.product_id,
@@ -76,6 +83,8 @@ export function BusinessDocumentWorkflow({
             unitId: x.transaction_unit_id || result.products.find((p:any) => p.id === x.product_id)?.unit_id || "",
             unitPrice: Number(x.transaction_unit_price ?? x.unit_price),
             discount: Number(x.discount),
+            discountType: x.discount_type || "fixed",
+            discountValue: Number(x.discount_value ?? x.discount),
             taxRateId: x.tax_rate_id || "",
             accountId: savedLineAccount(
               x[kind === "invoice" ? "revenue_account_id" : "expense_account_id"],
@@ -165,7 +174,7 @@ export function BusinessDocumentWorkflow({
   const oversale =
     kind === "invoice" &&
     lines.some((x) => tracked(x) && normalized(x) > available(x));
-  const { subtotal, vat, total } = calculateBusinessDocumentTotals(lines, data.taxRates);
+  const totals = calculateBusinessDocumentTotals(lines, data.taxRates, kind === "invoice" ? { discountType: invoiceDiscountType, discountValue: invoiceDiscountValue, vatTreatment, roundOff } : {});
   async function save(post: boolean) {
     setBusy(true);
     setError("");
@@ -180,8 +189,14 @@ export function BusinessDocumentWorkflow({
       dueDate,
       reference,
       notes,
+      invoiceDiscountType,
+      invoiceDiscountValue: kind === "invoice" ? invoiceDiscountValue : 0,
+      vatTreatment,
+      roundOff: kind === "invoice" ? roundOff : 0,
       lines: lines.map((x) => ({
         ...x,
+        discountType: x.discountType || "fixed",
+        discountValue: x.discountValue ?? x.discount,
         taxRateId: x.taxRateId || undefined,
         locationId: x.locationId || undefined,
       })),
@@ -232,16 +247,9 @@ export function BusinessDocumentWorkflow({
       </div>
       <section className="panel form-panel">
         <div className="form-grid">
-          <label>
-            {kind === "invoice" ? "Customer" : "Supplier"}
-            <select value={partyId} onChange={(e) => { dirty.current.party = true; setParty(e.target.value); }}>
-              {parties.map((x) => (
-                <option key={x.id} value={x.id}>
-                  {x.name}
-                </option>
-              ))}
-            </select>
-          </label>
+          <SearchableSelector label={kind === "invoice" ? "Customer" : "Supplier"} value={partyId}
+            options={parties.map((x) => ({ id:x.id, label:x.name, description:[x.phone,x.email].filter(Boolean).join(" · ") }))}
+            search={(query)=>searchMasterRecords(kind==="invoice"?"customer":"supplier",query)} onChange={(value) => { dirty.current.party = true; setParty(value); }} required />
           <label>
             Branch
             <input value={data.branch.name} readOnly />
@@ -289,19 +297,9 @@ export function BusinessDocumentWorkflow({
                 kind === "invoice" && isTracked && normalized(line) > stock;
             return (
               <div className="line-row inventory-document-line" key={index}>
-                <label>
-                  Product / service
-                  <select
-                    value={line.productId}
-                    onChange={(e) => chooseProduct(index, e.target.value)}
-                  >
-                    {data.products.map((x) => (
-                      <option key={x.id} value={x.id}>
-                        {x.name} {x.sku ? `(${x.sku})` : ""}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                <SearchableSelector label="Product / service" value={line.productId}
+                  options={data.products.map((x) => ({ id:x.id, label:x.name, description:[x.sku, x.inventory_units?.code].filter(Boolean).join(" · "), search:x.sku }))}
+                  search={(query)=>searchMasterRecords("product",query)} onChange={(value) => chooseProduct(index, value)} required />
                 <label>
                   Quantity
                   <input
@@ -343,17 +341,14 @@ export function BusinessDocumentWorkflow({
                     }
                   />
                 </label>
-                <label>
-                  Discount
-                  <input
+                <label className="discount-control">Discount<div className="discount-input"><select aria-label="Discount type" value={line.discountType || "fixed"} onChange={(e) => change(index, { discountType:e.target.value as "fixed"|"percentage", discountValue:0, discount:0 })}><option value="fixed">AED</option><option value="percentage">%</option></select><input
                     type="number"
                     min="0"
+                    max={line.discountType === "percentage" ? 100 : undefined}
                     step="0.01"
-                    value={line.discount}
-                    onChange={(e) =>
-                      change(index, { discount: Number(e.target.value) })
-                    }
-                  />
+                    value={line.discountValue ?? line.discount}
+                    onChange={(e) => { const value=Number(e.target.value); change(index, { discountValue:value, discount:line.discountType === "percentage" ? line.quantity*line.unitPrice*value/100 : value }); }}
+                  /></div>
                 </label>
                 <label>
                   Tax
@@ -439,6 +434,11 @@ export function BusinessDocumentWorkflow({
           Notes
           <textarea value={notes} onChange={(e) => setNotes(e.target.value)} />
         </label>
+        {kind === "invoice" && <div className="invoice-adjustments"><h2>Invoice adjustments</h2><div className="form-grid">
+          <label>Invoice discount<div className="discount-input"><select value={invoiceDiscountType} onChange={(e)=>setInvoiceDiscountType(e.target.value as "fixed"|"percentage")}><option value="fixed">AED</option><option value="percentage">%</option></select><input type="number" min="0" max={invoiceDiscountType==="percentage"?100:undefined} step="0.01" value={invoiceDiscountValue} onChange={(e)=>setInvoiceDiscountValue(Number(e.target.value))}/></div></label>
+          <label>VAT treatment<select value={vatTreatment} onChange={(e)=>setVatTreatment(e.target.value as "affects_vat"|"post_tax")}><option value="affects_vat">Discount reduces taxable amount</option><option value="post_tax">Apply after VAT</option></select></label>
+          <label>Round off<input type="number" min="-10" max="10" step="0.01" value={roundOff} onChange={(e)=>setRoundOff(Number(e.target.value))}/><small>Small adjustment only (maximum ± AED 10).</small></label>
+        </div></div>}
         {error && <p className="error">{error}</p>}
         {oversale && (
           <p className="error">
@@ -448,13 +448,18 @@ export function BusinessDocumentWorkflow({
         )}
         <div className="totals">
           <span>
-            Subtotal <b>{money(subtotal)}</b>
+            Subtotal <b>{money(totals.gross)}</b>
           </span>
+          {totals.lineDiscount > 0 && <span>Line discounts <b>− {money(totals.lineDiscount)}</b></span>}
+          {totals.invoiceDiscount > 0 && <span>Invoice discount <b>− {money(totals.invoiceDiscount)}</b></span>}
+          <span>Taxable amount <b>{money(totals.taxable)}</b></span>
           <span>
-            VAT <b>{money(vat)}</b>
+            VAT <b>{money(totals.vat)}</b>
           </span>
+          {totals.postTaxDiscount > 0 && <span>Post-tax discount <b>− {money(totals.postTaxDiscount)}</b></span>}
+          {totals.roundOff !== 0 && <span>Round off <b>{totals.roundOff > 0 ? "+ " : "− "}{money(Math.abs(totals.roundOff))}</b></span>}
           <strong>
-            Total <b>{money(total)}</b>
+            Grand total <b>{money(totals.total)}</b>
           </strong>
         </div>
         <div className="form-actions">

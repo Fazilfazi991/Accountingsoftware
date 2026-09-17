@@ -9,6 +9,8 @@ const lineSchema = z.object({
   unitId: uuid.optional(),
   unitPrice: z.coerce.number().min(0),
   discount: z.coerce.number().min(0),
+  discountType: z.enum(["fixed", "percentage"]).optional(),
+  discountValue: z.coerce.number().min(0).optional(),
   taxRateId: uuid.optional(),
   accountId: uuid,
   locationId: uuid.optional(),
@@ -25,6 +27,10 @@ export const documentSchema = z.object({
   reference: z.string().trim().max(120).optional(),
   notes: z.string().trim().max(500).optional(),
   lines: z.array(lineSchema).min(1),
+  invoiceDiscountType: z.enum(["fixed", "percentage"]).optional(),
+  invoiceDiscountValue: z.coerce.number().min(0).optional(),
+  vatTreatment: z.enum(["affects_vat", "post_tax"]).optional(),
+  roundOff: z.coerce.number().min(-10).max(10).optional(),
 });
 
 export function documentValidationMessage(

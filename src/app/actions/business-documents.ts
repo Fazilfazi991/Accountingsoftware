@@ -106,7 +106,7 @@ export async function getBusinessDocumentData(): Promise<
       }),
       client
         .from("sales_invoices")
-        .select("id,customer_id,invoice_date,due_date,reference,notes,status")
+        .select("id,customer_id,invoice_date,due_date,reference,notes,status,invoice_discount_type,invoice_discount_value,vat_treatment,round_off")
         .eq("organization_id", org)
         .eq("status", "draft"),
       client
@@ -117,7 +117,7 @@ export async function getBusinessDocumentData(): Promise<
       client
         .from("sales_invoice_lines")
         .select(
-          "id,invoice_id,description,quantity,unit_price,discount,tax_rate_id,revenue_account_id,product_id,inventory_location_id,transaction_quantity,transaction_unit_id,transaction_unit_code,transaction_unit_name,conversion_factor,transaction_unit_price",
+          "id,invoice_id,description,quantity,unit_price,discount,discount_type,discount_value,tax_rate_id,revenue_account_id,product_id,inventory_location_id,transaction_quantity,transaction_unit_id,transaction_unit_code,transaction_unit_name,conversion_factor,transaction_unit_price",
         )
         .eq("organization_id", org),
       client
@@ -161,7 +161,7 @@ export async function getBusinessDocumentData(): Promise<
   }
 }
 export async function saveBusinessDocument(
-  input: z.infer<typeof documentSchema>,
+  input: z.input<typeof documentSchema>,
 ) {
   const parsed = documentSchema.safeParse(input);
   if (!parsed.success)
@@ -188,7 +188,7 @@ export async function saveBusinessDocument(
       product_id: x.productId,
       inventory_location_id: x.locationId || null,
       ...(p.kind === "invoice"
-        ? { revenue_account_id: x.accountId }
+        ? { revenue_account_id: x.accountId, discount_type: x.discountType || "fixed", discount_value: x.discountValue ?? x.discount }
         : { expense_account_id: x.accountId }),
     }));
     const name =
@@ -212,6 +212,10 @@ export async function saveBusinessDocument(
               p_branch_id: context.branch.id,
               p_reference: p.reference || null,
               p_notes: p.notes || null,
+              p_invoice_discount_type: p.invoiceDiscountType || "fixed",
+              p_invoice_discount_value: p.invoiceDiscountValue || 0,
+              p_vat_treatment: p.vatTreatment || "affects_vat",
+              p_round_off: p.roundOff || 0,
             }
           : {
               p_organization_id: context.organization.id,
@@ -222,6 +226,10 @@ export async function saveBusinessDocument(
               p_branch_id: context.branch.id,
               p_reference: p.reference || null,
               p_notes: p.notes || null,
+              p_invoice_discount_type: p.invoiceDiscountType || "fixed",
+              p_invoice_discount_value: p.invoiceDiscountValue || 0,
+              p_vat_treatment: p.vatTreatment || "affects_vat",
+              p_round_off: p.roundOff || 0,
             }
         : p.id
           ? {

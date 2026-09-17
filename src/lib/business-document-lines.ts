@@ -11,6 +11,8 @@ export type BusinessDocumentLine = {
   unitId?: string;
   unitPrice: number;
   discount: number;
+  discountType?: "fixed" | "percentage";
+  discountValue?: number;
   taxRateId: string;
   accountId: string;
   locationId: string;
@@ -49,6 +51,8 @@ export function newLine(data: BusinessDocumentChoices, kind: BusinessDocumentKin
     unitPrice:
       Number(kind === "invoice" ? p?.sales_price : p?.purchase_price) || 0,
     discount: 0,
+    discountType: "fixed",
+    discountValue: 0,
     taxRateId: p?.tax_rate_id || "",
     accountId: defaultAccount(data, kind),
     locationId: tracked
