@@ -15,6 +15,8 @@ const productSchema = z.object({
   sku: z.string().trim().max(80).optional(),
   category: z.string().trim().max(100).optional(),
   unitId: uuid.optional(),
+  secondaryUnitId: uuid.optional(),
+  secondaryConversionFactor: z.coerce.number().positive().max(1000000000).optional(),
   salesPrice: z.coerce.number().min(0),
   purchasePrice: z.coerce.number().min(0),
   taxRateId: uuid.optional(),
@@ -43,10 +45,17 @@ const operationSchema = z.object({
   sourceLocationId: uuid,
   destinationLocationId: uuid.optional(),
   quantity,
+  unitId: uuid,
   unitCost: z.coerce.number().positive().optional(),
   reference: z.string().trim().max(120).optional(),
   reason: z.string().trim().max(200).optional(),
   notes: z.string().trim().max(500).optional(),
+});
+const unitSchema = z.object({
+  id: uuid.optional(),
+  name: z.string().trim().min(1).max(80),
+  code: z.string().trim().min(1).max(16),
+  active: z.boolean(),
 });
 
 export type InventoryData = {
@@ -57,6 +66,7 @@ export type InventoryData = {
   movements: any[];
   valuation: any[];
   cogs: any[];
+  operationUomDetails: any[];
   taxRates: any[];
   branches: { id: string; name: string; active: boolean }[];
 };
@@ -77,6 +87,9 @@ export async function getInventoryData(
     await client.rpc("initialize_inventory_foundation", {
       p_organization_id: context.organization.id,
     });
+    await client.rpc("ensure_default_inventory_units", {
+      p_org: context.organization.id,
+    });
     const org = context.organization.id;
     const [
       products,
@@ -86,12 +99,13 @@ export async function getInventoryData(
       movements,
       valuation,
       cogs,
+      operationUomDetails,
       taxRates,
     ] = await Promise.all([
       client
         .from("products")
         .select(
-          "id,kind,name,sku,category,unit_id,sales_price,purchase_price,track_inventory,reorder_level,tax_rate_id,status,inventory_units(code,name),tax_rates(code,rate_percent)",
+          "id,kind,name,sku,category,unit_id,secondary_unit_id,secondary_conversion_factor,sales_price,purchase_price,track_inventory,reorder_level,tax_rate_id,status,inventory_units:inventory_units!products_unit_id_fkey(id,code,name,status),secondary_unit:inventory_units!products_secondary_unit_id_fkey(id,code,name,status),tax_rates(code,rate_percent)",
         )
         .eq("organization_id", org)
         .order("name"),
@@ -131,6 +145,10 @@ export async function getInventoryData(
         p_product_id: filters.productId || null,
       }),
       client
+        .from("stock_operation_uom_details")
+        .select("operation_id,transaction_quantity,transaction_unit_code,conversion_factor,transaction_unit_cost")
+        .eq("organization_id", org),
+      client
         .from("tax_rates")
         .select("id,code,name,rate_percent")
         .eq("organization_id", org)
@@ -145,17 +163,27 @@ export async function getInventoryData(
       movements,
       valuation,
       cogs,
+      operationUomDetails,
       taxRates,
     ].find((x) => x.error);
     if (failed?.error) return { error: "Unable to load inventory data." };
     return {
       products: products.data || [],
-      units: units.data || [],
+      units: (units.data || []).map((unit) => ({
+        ...unit,
+        products: [{
+          count: (products.data || []).filter((product) => product.unit_id === unit.id).length,
+        }],
+        secondary_products: [{
+          count: (products.data || []).filter((product) => product.secondary_unit_id === unit.id).length,
+        }],
+      })),
       locations: locations.data || [],
       summary: summary.data || [],
       movements: movements.data || [],
       valuation: valuation.data || [],
       cogs: cogs.data || [],
+      operationUomDetails: operationUomDetails.data || [],
       taxRates: taxRates.data || [],
       branches: context.payload.allBranches,
     };
@@ -174,14 +202,28 @@ export async function saveInventoryProduct(
       client = await createClient(),
       p = parsed.data;
     if (p.kind === "product" && p.trackInventory && !p.unitId)
-      return { error: "Choose a unit for inventory-tracked products." };
+      return { error: "Choose a primary unit for inventory-tracked products." };
+    if (p.secondaryUnitId && (!p.unitId || p.secondaryUnitId === p.unitId || !p.secondaryConversionFactor))
+      return { error: "Choose different primary and secondary units and enter a positive conversion." };
+    const selectedUnitIds = [p.unitId, p.secondaryUnitId].filter(Boolean) as string[];
+    if (selectedUnitIds.length) {
+      const [units, existing] = await Promise.all([
+        client.from("inventory_units").select("id,status").eq("organization_id", context.organization.id).in("id", selectedUnitIds),
+        p.id ? client.from("products").select("unit_id,secondary_unit_id").eq("organization_id", context.organization.id).eq("id", p.id).maybeSingle() : Promise.resolve({ data: null }),
+      ]);
+      if (units.error || units.data?.length !== selectedUnitIds.length) return { error: "Choose units belonging to this organization." };
+      const prior = new Set([existing.data?.unit_id, existing.data?.secondary_unit_id].filter(Boolean));
+      if (units.data.some((unit) => unit.status !== "active" && !prior.has(unit.id))) return { error: "Inactive units cannot be selected for a product." };
+    }
     const row = {
       organization_id: context.organization.id,
       kind: p.kind,
       name: p.name,
       sku: p.sku || null,
       category: p.category || null,
-      unit_id: p.kind === "product" ? p.unitId || null : null,
+      unit_id: p.unitId || null,
+      secondary_unit_id: p.secondaryUnitId || null,
+      secondary_conversion_factor: p.secondaryUnitId ? p.secondaryConversionFactor : null,
       sales_price: p.salesPrice,
       purchase_price: p.purchasePrice,
       tax_rate_id: p.taxRateId || null,
@@ -213,6 +255,25 @@ export async function saveInventoryProduct(
   } catch {
     return { error: "Unable to save product." };
   }
+}
+
+export async function saveInventoryUnit(value: z.infer<typeof unitSchema>) {
+  const parsed = unitSchema.safeParse(value);
+  if (!parsed.success) return { error: "Enter a unit name and symbol." };
+  try {
+    const context = await requireOrganizationContext(), client = await createClient(), p = parsed.data;
+    const { data, error } = await client.rpc("save_inventory_unit", {
+      p_org: context.organization.id,
+      p_id: p.id || null,
+      p_name: p.name,
+      p_code: p.code,
+      p_status: p.active ? "active" : "inactive",
+    });
+    if (error) return { error: error.message.includes("duplicate_unit") ? "A unit with this name or symbol already exists." : "Unable to save unit." };
+    revalidatePath("/inventory/units");
+    revalidatePath("/products");
+    return { id: String(data) };
+  } catch { return { error: "Unable to save unit." }; }
 }
 
 export async function saveInventoryLocation(
@@ -286,7 +347,7 @@ export async function postInventoryOperation(
         .single()
     ).data;
     if (!source) return { error: "Choose an accessible source location." };
-    const { data, error } = await client.rpc("post_stock_operation", {
+    const { data, error } = await client.rpc("post_stock_operation_uom", {
       p_operation_id: p.operationId,
       p_organization_id: context.organization.id,
       p_branch_id: source.branch_id,
@@ -295,8 +356,9 @@ export async function postInventoryOperation(
       p_product_id: p.productId,
       p_source_location_id: p.sourceLocationId,
       p_destination_location_id: p.destinationLocationId || null,
-      p_quantity: p.quantity,
-      p_unit_cost: p.unitCost || null,
+      p_transaction_quantity: p.quantity,
+      p_transaction_unit_id: p.unitId,
+      p_transaction_unit_cost: p.unitCost || null,
       p_reference: p.reference || null,
       p_reason: p.reason || null,
       p_notes: p.notes || null,

@@ -9,8 +9,10 @@ import {
   postInventoryOperation,
   saveInventoryLocation,
   saveInventoryProduct,
+  saveInventoryUnit,
   type InventoryData,
 } from "@/app/actions/inventory";
+import { validProductUnits } from "@/lib/uom";
 
 type Mode =
   | "products"
@@ -80,7 +82,7 @@ export function InventoryWorkflow({ mode, id }: { mode: Mode; id?: string }) {
       "Stock by location and recent movement history.",
     ],
     locations: ["Stock locations", "Branch-scoped physical stock locations."],
-    units: ["Units", "Inventory units with no conversion in V1."],
+    units: ["Units", "Manage organization units used by products and documents."],
     opening: [
       "Stock opening",
       "Post initial quantity and value to Inventory and owner capital.",
@@ -125,7 +127,7 @@ export function InventoryWorkflow({ mode, id }: { mode: Mode; id?: string }) {
       ) : mode === "locations" ? (
         <Locations data={data} refresh={refresh} />
       ) : mode === "units" ? (
-        <Units data={data} />
+        <Units data={data} refresh={refresh} />
       ) : mode === "opening" ? (
         <Operation data={data} kind="opening" refresh={refresh} />
       ) : mode === "adjustment" ? (
@@ -249,20 +251,25 @@ function Products({ data }: { data: InventoryData }) {
     </section>
   );
 }
-function ProductForm({ data }: { data: InventoryData }) {
+function ProductForm({ data, product }: { data: InventoryData; product?: any }) {
   const router = useRouter(),
-    [kind, setKind] = useState<"product" | "service">("product"),
-    [tracked, setTracked] = useState(true),
+    [kind, setKind] = useState<"product" | "service">(product?.kind || "product"),
+    [tracked, setTracked] = useState(product?.track_inventory ?? true),
+    [primaryUnitId, setPrimaryUnitId] = useState(product?.unit_id || ""),
+    [secondaryUnitId, setSecondaryUnitId] = useState(product?.secondary_unit_id || ""),
     [message, setMessage] = useState("");
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
     const r = await saveInventoryProduct({
       kind,
+      id: product?.id,
       name: String(f.get("name")),
       sku: String(f.get("sku")),
       category: String(f.get("category")),
-      unitId: tracked && kind === "product" ? String(f.get("unit")) : undefined,
+      unitId: primaryUnitId || undefined,
+      secondaryUnitId: secondaryUnitId || undefined,
+      secondaryConversionFactor: secondaryUnitId ? Number(f.get("conversion")) : undefined,
       salesPrice: Number(f.get("salesPrice")),
       purchasePrice: Number(f.get("purchasePrice")),
       taxRateId: String(f.get("taxRate") || "") || undefined,
@@ -292,21 +299,22 @@ function ProductForm({ data }: { data: InventoryData }) {
         </label>
         <label>
           Name
-          <input name="name" required />
+          <input name="name" defaultValue={product?.name || ""} required />
         </label>
         <label>
           SKU
-          <input name="sku" />
+          <input name="sku" defaultValue={product?.sku || ""} />
         </label>
         <label>
           Category
-          <input name="category" />
+          <input name="category" defaultValue={product?.category || ""} />
         </label>
         <label>
-          Unit
-          <select name="unit" disabled={!tracked}>
+          Primary Unit {kind === "product" && tracked ? "*" : ""}
+          <select name="unit" value={primaryUnitId} onChange={(e) => { setPrimaryUnitId(e.target.value); if (e.target.value === secondaryUnitId) setSecondaryUnitId(""); }} required={kind === "product" && tracked}>
+            <option value="">No unit</option>
             {data.units
-              .filter((x) => x.status === "active")
+              .filter((x) => x.status === "active" || x.id === product?.unit_id)
               .map((x) => (
                 <option key={x.id} value={x.id}>
                   {x.code} — {x.name}
@@ -314,6 +322,18 @@ function ProductForm({ data }: { data: InventoryData }) {
               ))}
           </select>
         </label>
+        <label>
+          Secondary Unit
+          <select value={secondaryUnitId} onChange={(e) => setSecondaryUnitId(e.target.value)} disabled={!primaryUnitId}>
+            <option value="">None</option>
+            {data.units.filter((x) => (x.status === "active" || x.id === product?.secondary_unit_id) && x.id !== primaryUnitId).map((x) => <option key={x.id} value={x.id}>{x.code} — {x.name}</option>)}
+          </select>
+        </label>
+        {secondaryUnitId && <label className="uom-conversion-field">
+          Conversion
+          <span className="uom-equation">1 {data.units.find((x) => x.id === primaryUnitId)?.code} = <input name="conversion" type="number" min="0.000000000001" max="1000000000" step="any" defaultValue={product?.secondary_conversion_factor || ""} required /> {data.units.find((x) => x.id === secondaryUnitId)?.code}</span>
+        </label>}
+        <div className="form-link"><Link className="record-link" href="/inventory/units">+ Create Unit</Link></div>
         <label>
           Track inventory
           <input
@@ -330,7 +350,7 @@ function ProductForm({ data }: { data: InventoryData }) {
             type="number"
             min="0"
             step="0.0001"
-            defaultValue="0"
+            defaultValue={product?.sales_price || "0"}
           />
         </label>
         <label>
@@ -340,12 +360,12 @@ function ProductForm({ data }: { data: InventoryData }) {
             type="number"
             min="0"
             step="0.0001"
-            defaultValue="0"
+            defaultValue={product?.purchase_price || "0"}
           />
         </label>
         <label>
           VAT rate
-          <select name="taxRate">
+          <select name="taxRate" defaultValue={product?.tax_rate_id || ""}>
             <option value="">No VAT</option>
             {data.taxRates.map((x) => (
               <option key={x.id} value={x.id}>
@@ -361,7 +381,7 @@ function ProductForm({ data }: { data: InventoryData }) {
             type="number"
             min="0"
             step="0.0001"
-            defaultValue="0"
+            defaultValue={product?.reorder_level || "0"}
             disabled={!tracked}
           />
         </label>
@@ -371,7 +391,7 @@ function ProductForm({ data }: { data: InventoryData }) {
         <Link className="button secondary" href="/products">
           Cancel
         </Link>
-        <button className="button">Save item</button>
+        <button className="button">{product ? "Save changes" : "Save item"}</button>
       </div>
     </form>
   );
@@ -423,6 +443,10 @@ function ProductDetail({ data, id }: { data: InventoryData; id: string }) {
           </div>
         )}
       </section>
+      <details className="panel edit-product-panel">
+        <summary>Edit product settings</summary>
+        <ProductForm data={data} product={p} />
+      </details>
       {p.kind === "product" && p.track_inventory && (
         <>
           {valuation?.valuation_status === "valuation_required" &&
@@ -482,7 +506,7 @@ function ProductDetail({ data, id }: { data: InventoryData; id: string }) {
           </section>
           <section className="panel">
             <h2>Recent movements</h2>
-            <MovementTable rows={movements} />
+            <MovementTable rows={movements} uomDetails={data.operationUomDetails} />
           </section>
         </>
       )}
@@ -570,31 +594,53 @@ function Locations({
     </>
   );
 }
-function Units({ data }: { data: InventoryData }) {
+function Units({ data, refresh }: { data: InventoryData; refresh: () => Promise<void> }) {
+  const [editing, setEditing] = useState<any | null>(null), [message, setMessage] = useState("");
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault(); const form = new FormData(event.currentTarget);
+    const result = await saveInventoryUnit({ id: editing?.id, name: String(form.get("name")), code: String(form.get("code")), active: form.get("active") === "on" });
+    setMessage("error" in result ? result.error || "Unable to save unit." : "Unit saved.");
+    if (!("error" in result)) { setEditing(null); event.currentTarget.reset(); await refresh(); }
+  }
+  const usage = (unit: any) => Number(unit.products?.[0]?.count || 0) + Number(unit.secondary_products?.[0]?.count || 0);
   return (
-    <section className="panel">
-      <p>V1 quantities use one unit per item; conversions are deferred.</p>
+    <>
+      <form className="panel uom-master-form" onSubmit={submit}>
+        <div><h2>{editing ? "Edit unit" : "Create unit"}</h2><p>Symbols are stored in uppercase and duplicates are checked within this organization.</p></div>
+        <label>Unit Name<input key={`name-${editing?.id || "new"}`} name="name" defaultValue={editing?.name || ""} placeholder="Pieces" required /></label>
+        <label>Symbol / Short Name<input key={`code-${editing?.id || "new"}`} name="code" defaultValue={editing?.code || ""} placeholder="PCS" required /></label>
+        <label className="uom-active"><input key={`active-${editing?.id || "new"}`} name="active" type="checkbox" defaultChecked={editing ? editing.status === "active" : true} /> Active</label>
+        <button className="button">{editing ? "Save unit" : "+ Create Unit"}</button>
+        {editing && <button className="button secondary" type="button" onClick={() => setEditing(null)}>Cancel</button>}
+        {message && <p className={message.startsWith("Unit saved") ? "success" : "error"}>{message}</p>}
+      </form>
+      <section className="panel">
       <div className="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>Code</th>
               <th>Name</th>
+              <th>Symbol</th>
               <th>Status</th>
+              <th>Usage</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
             {data.units.map((x) => (
               <tr key={x.id}>
-                <td>{x.code}</td>
                 <td>{x.name}</td>
+                <td>{x.code}</td>
                 <td>{x.status}</td>
+                <td>{usage(x)} product{usage(x) === 1 ? "" : "s"}</td>
+                <td><button className="text-button" type="button" onClick={() => setEditing(x)}>Edit</button></td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-    </section>
+      </section>
+    </>
   );
 }
 function Operation({
@@ -610,6 +656,10 @@ function Operation({
       (x) => x.kind === "product" && x.track_inventory && x.status === "active",
     ),
     locations = data.locations.filter((x) => x.status === "active"),
+    [productId, setProductId] = useState(inventory[0]?.id || ""),
+    selectedProduct = inventory.find((x) => x.id === productId),
+    productUnits = selectedProduct ? validProductUnits(selectedProduct) : [],
+    [unitId, setUnitId] = useState(selectedProduct?.unit_id || ""),
     [direction, setDirection] = useState("adjustment_in"),
     [message, setMessage] = useState("");
   async function submit(e: FormEvent<HTMLFormElement>) {
@@ -623,6 +673,7 @@ function Operation({
             : kind,
         date: String(f.get("date")),
         productId: String(f.get("product")),
+        unitId: String(f.get("unit")),
         sourceLocationId: String(f.get("source")),
         destinationLocationId:
           kind === "transfer" ? String(f.get("destination")) : undefined,
@@ -655,12 +706,18 @@ function Operation({
         </label>
         <label>
           Product
-          <select name="product" required>
+          <select name="product" value={productId} onChange={(e) => { const next = inventory.find((x) => x.id === e.target.value); setProductId(e.target.value); setUnitId(next?.unit_id || ""); }} required>
             {inventory.map((x) => (
               <option key={x.id} value={x.id}>
                 {x.name} {x.sku ? `(${x.sku})` : ""}
               </option>
             ))}
+          </select>
+        </label>
+        <label>
+          Unit
+          <select name="unit" value={unitId} onChange={(e) => setUnitId(e.target.value)} required>
+            {productUnits.map((unit) => <option key={unit.id} value={unit.id}>{unit.code} — {unit.name}</option>)}
           </select>
         </label>
         {kind === "adjustment" && (
@@ -710,7 +767,7 @@ function Operation({
         {(kind === "opening" ||
           (kind === "adjustment" && direction === "adjustment_in")) && (
           <label>
-            Unit cost (AED)
+            Unit cost per {productUnits.find((unit) => unit.id === unitId)?.code || "unit"} (AED)
             <input
               name="unitCost"
               type="number"
@@ -945,12 +1002,12 @@ function Movements({
         movementTypeFilter
       />
       <section className="panel">
-        <MovementTable rows={data.movements} />
+        <MovementTable rows={data.movements} uomDetails={data.operationUomDetails} />
       </section>
     </>
   );
 }
-function MovementTable({ rows }: { rows: any[] }) {
+function MovementTable({ rows, uomDetails = [] }: { rows: any[]; uomDetails?: any[] }) {
   return (
     <div className="table-wrap">
       <table>
@@ -962,6 +1019,7 @@ function MovementTable({ rows }: { rows: any[] }) {
             <th>Type</th>
             <th>Document</th>
             <th>Reference</th>
+            <th>Entered</th>
             <th>In</th>
             <th>Out</th>
             <th>Running qty</th>
@@ -973,6 +1031,7 @@ function MovementTable({ rows }: { rows: any[] }) {
         <tbody>
           {rows.map((x) => {
             const n = Number(x.signed_quantity);
+            const entered = x.source_document_type === "stock_operation" ? uomDetails.find((detail) => detail.operation_id === x.source_document_id) : null;
             const documentRoot =
               x.source_document_type === "sales_invoice"
                 ? "/sales/invoices"
@@ -1015,6 +1074,7 @@ function MovementTable({ rows }: { rows: any[] }) {
                   )}
                 </td>
                 <td>{x.reference || "—"}</td>
+                <td>{entered ? `${qty(entered.transaction_quantity)} ${entered.transaction_unit_code}` : "—"}</td>
                 <td>{n > 0 ? qty(n) : "—"}</td>
                 <td>{n < 0 ? qty(-n) : "—"}</td>
                 <td>{qty(x.running_quantity)}</td>
