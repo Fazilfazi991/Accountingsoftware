@@ -51,11 +51,11 @@ describe("Today operating states", () => {
     expect(html).toContain("Review invoice →");
     expect(html).toContain(", there");
   });
-  it("keeps the Financial Overview header link a practical mobile touch target", () => {
+  it("keeps the Dashboard link a practical mobile touch target", () => {
     const css = readFileSync(new URL("./today.module.css", import.meta.url), "utf8");
-    expect(css).toMatch(/\.headerRight \.back\{[^}]*min-height:44px/);
+    expect(css).toMatch(/\.back\{[^}]*min-height:44px/);
     const html = renderToStaticMarkup(<TodayView data={base} />);
-    expect(html).toContain("Financial Overview ↗");
+    expect(html).toContain("Dashboard ↗");
     expect(html).not.toContain("QA Company");
     expect(html).not.toContain("Dubai");
   });

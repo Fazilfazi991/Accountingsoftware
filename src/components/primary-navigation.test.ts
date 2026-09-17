@@ -5,9 +5,9 @@ import type { NavigationGroup } from "./app-shell";
 const groups: readonly NavigationGroup[] = primaryNavigation;
 
 describe("product navigation", () => {
-  it("keeps Today as Home, Dashboard as Overview, and Assistant as a direct destination", () => {
+  it("keeps Home, one canonical Dashboard destination, and Assistant direct", () => {
     expect(groups.slice(0, 3).map(({ label, href }) => [label, href])).toEqual([
-      ["Home", "/"], ["Overview", "/overview"], ["Ask FYNTA", "/assistant"],
+      ["Home", "/"], ["Dashboard", "/overview"], ["Ask FYNTA", "/assistant"],
     ]);
     expect(groups.some(({ label, href }) => label === "Ask General" || href === "/general")).toBe(false);
   });
@@ -15,8 +15,9 @@ describe("product navigation", () => {
   it("preserves the existing accounting module destinations", () => {
     const links = groups.flatMap((group) => group.sections?.flatMap((section) => section.items.map(([, href]) => href)) ?? []);
     for (const href of ["/sales/invoices", "/sales/quotations", "/sales/delivery-notes", "/purchases/bills",
-      "/expenses", "/reports/profit-loss", "/reports/accounts-receivable", "/reports/accounts-payable"]) {
+      "/reports/profit-loss", "/reports/accounts-receivable", "/reports/accounts-payable"]) {
       expect(links).toContain(href);
     }
+    expect(groups.some(({ label, href }) => label === "Expenses" && href === "/expenses")).toBe(true);
   });
 });

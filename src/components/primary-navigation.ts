@@ -2,7 +2,7 @@ import type { NavigationGroup } from "@/components/app-shell";
 
 export const primaryNavigation = [
   { label: "Home", icon: "home", href: "/" },
-  { label: "Overview", icon: "overview", href: "/overview" },
+  { label: "Dashboard", icon: "overview", href: "/overview" },
   { label: "Ask FYNTA", icon: "assistant", href: "/assistant" },
   {
     label: "Sales",
@@ -32,12 +32,13 @@ export const primaryNavigation = [
       },
     ],
   },
+  { label: "Expenses", icon: "accounts", href: "/expenses" },
   {
     label: "Inventory",
     icon: "inventory",
     sections: [
       {
-        label: "Transactions",
+        label: "Stock",
         items: [
           ["Stock Opening", "/inventory/opening"],
           ["Stock Adjustment", "/inventory/adjustments"],
@@ -59,29 +60,6 @@ export const primaryNavigation = [
           ["Products & Services", "/products"],
           ["Stock Locations", "/inventory/locations"],
           ["Units", "/inventory/units"],
-        ],
-      },
-    ],
-  },
-  {
-    label: "Accounts",
-    icon: "accounts",
-    sections: [
-      {
-        label: "Transactions",
-        items: [
-          ["Opening Balances", "/accounting/opening-balances"],
-          ["Journal Entry", "/accounting/journals"],
-          ["Expenses", "/expenses"],
-        ],
-      },
-      {
-        label: "Statements",
-        items: [
-          ["Customer Statement", "/reports/customer-statement"],
-          ["Supplier Statement", "/reports/supplier-statement"],
-          ["Accounts Receivable", "/reports/accounts-receivable"],
-          ["Accounts Payable", "/reports/accounts-payable"],
         ],
       },
     ],
@@ -109,12 +87,12 @@ export const primaryNavigation = [
       },
       {
         label: "Operational",
-        items: [["All Operational Reports", "/reports"]],
+        items: [["Accounts Receivable", "/reports/accounts-receivable"], ["Accounts Payable", "/reports/accounts-payable"], ["Customer Statement", "/reports/customer-statement"], ["Supplier Statement", "/reports/supplier-statement"], ["All Operational Reports", "/reports"]],
       },
     ],
   },
   {
-    label: "Masters",
+    label: "Contacts",
     icon: "masters",
     sections: [
       {
@@ -122,19 +100,6 @@ export const primaryNavigation = [
         items: [
           ["Customers", "/sales/customers"],
           ["Suppliers", "/purchases/suppliers"],
-        ],
-      },
-      {
-        label: "Accounting",
-        items: [
-          ["Accounting Masters", "/accounting/masters"],
-          ["Chart of Accounts", "/accounting/chart-of-accounts"],
-          ["Account Groups", "/accounting/account-groups"],
-          ["Cash Accounts", "/accounting/cash-accounts"],
-          ["Bank Accounts", "/accounting/bank-accounts"],
-          ["VAT / Tax Rates", "/accounting/tax-rates"],
-          ["Financial Years", "/accounting/financial-years"],
-          ["Document Numbering", "/accounting/document-numbering"],
         ],
       },
     ],
@@ -146,6 +111,10 @@ export const primaryNavigation = [
       {
         items: [
           ["Settings", "/settings"],
+          ["Accounting configuration", "/accounting/masters"],
+          ["Chart of Accounts", "/accounting/chart-of-accounts"],
+          ["Opening Balances", "/accounting/opening-balances"],
+          ["Journal Entry", "/accounting/journals"],
           ["Audit Log", "/settings/audit-log"],
         ],
       },
