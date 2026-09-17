@@ -6,6 +6,7 @@ const lineSchema = z.object({
   productId: uuid,
   description: z.string().trim().min(1).max(300),
   quantity: z.coerce.number().positive(),
+  unitId: uuid.optional(),
   unitPrice: z.coerce.number().min(0),
   discount: z.coerce.number().min(0),
   taxRateId: uuid.optional(),
@@ -49,6 +50,7 @@ export function documentValidationMessage(
         case "productId": return prefix + "Product is required or invalid.";
         case "description": return prefix + "Description is required.";
         case "quantity": return prefix + "Quantity must be greater than zero.";
+        case "unitId": return prefix + "Unit is invalid.";
         case "unitPrice": return prefix + (issue.code === "invalid_type"
           ? "Rate is required or invalid."
           : "Rate must be zero or greater.");

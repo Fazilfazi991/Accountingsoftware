@@ -106,16 +106,18 @@ export function DocumentPrint({ kind, id }: { kind: string; id: string }) {
             </thead>
             <tbody>
               {lines.map((l: any) => {
-                const net =
-                    Number(l.quantity) * Number(l.unit_price) -
+                const displayQuantity = Number(l.transaction_quantity ?? l.quantity),
+                  displayRate = Number(l.transaction_unit_price ?? l.unit_price),
+                  net =
+                    displayQuantity * displayRate -
                     Number(l.discount || 0),
                   rate = Number(l.tax_rates?.rate_percent || 0);
                 return (
                   <tr key={l.id}>
                     <td>{l.description}</td>
-                    <td>{Number(l.quantity)}</td>
-                    <td>{l.products?.inventory_units?.code || "—"}</td>
-                    <td className="amount">{money(l.unit_price)}</td>
+                    <td>{displayQuantity}</td>
+                    <td>{l.transaction_unit_code || l.products?.inventory_units?.code || "—"}</td>
+                    <td className="amount">{money(displayRate)}</td>
                     <td className="amount">{money(l.discount)}</td>
                     <td className="amount">{rate}%</td>
                     <td className="amount">

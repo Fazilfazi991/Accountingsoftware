@@ -3,7 +3,7 @@ import { z } from "zod";
 const uuid = z.string().uuid();
 export const operationalLineSchema = z.object({
   productId: uuid, description: z.string().trim().min(1).max(300),
-  quantity: z.coerce.number().positive(), unitPrice: z.coerce.number().min(0),
+  quantity: z.coerce.number().positive(), unitId: uuid.optional(), unitPrice: z.coerce.number().min(0),
   discount: z.coerce.number().min(0), taxRateId: uuid.optional(), accountId: uuid,
 });
 export const operationalDocumentSchema = z.object({

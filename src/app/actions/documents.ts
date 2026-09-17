@@ -147,7 +147,7 @@ export async function getPrintDocument(kindInput: string, idInput: string) {
     }
     if (d.lineTable) {
       const result = await (client.from(d.lineTable) as any)
-        .select("*,tax_rates(code,name,rate_percent),products(name,sku,inventory_units(code))")
+        .select("*,tax_rates(code,name,rate_percent),products(name,sku,inventory_units:inventory_units!products_unit_id_fkey(code))")
         .eq(d.lineFk, id.data)
         .eq("organization_id", org)
         .order("id");

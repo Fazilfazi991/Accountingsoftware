@@ -74,7 +74,7 @@ export async function getBusinessDocumentData(): Promise<
       client
         .from("products")
         .select(
-          "id,name,sku,kind,track_inventory,unit_id,sales_price,purchase_price,tax_rate_id,status,inventory_units(code)",
+          "id,name,sku,kind,track_inventory,unit_id,secondary_unit_id,secondary_conversion_factor,sales_price,purchase_price,tax_rate_id,status,inventory_units:inventory_units!products_unit_id_fkey(id,code,name,status),secondary_unit:inventory_units!products_secondary_unit_id_fkey(id,code,name,status)",
         )
         .eq("organization_id", org)
         .eq("status", "active")
@@ -117,13 +117,13 @@ export async function getBusinessDocumentData(): Promise<
       client
         .from("sales_invoice_lines")
         .select(
-          "id,invoice_id,description,quantity,unit_price,discount,tax_rate_id,revenue_account_id,product_id,inventory_location_id",
+          "id,invoice_id,description,quantity,unit_price,discount,tax_rate_id,revenue_account_id,product_id,inventory_location_id,transaction_quantity,transaction_unit_id,transaction_unit_code,transaction_unit_name,conversion_factor,transaction_unit_price",
         )
         .eq("organization_id", org),
       client
         .from("purchase_bill_lines")
         .select(
-          "id,bill_id,description,quantity,unit_price,discount,tax_rate_id,expense_account_id,product_id,inventory_location_id",
+          "id,bill_id,description,quantity,unit_price,discount,tax_rate_id,expense_account_id,product_id,inventory_location_id,transaction_quantity,transaction_unit_id,transaction_unit_code,transaction_unit_name,conversion_factor,transaction_unit_price",
         )
         .eq("organization_id", org),
     ]);
@@ -181,6 +181,7 @@ export async function saveBusinessDocument(
     const lines = p.lines.map((x) => ({
       description: x.description,
       quantity: x.quantity,
+      ...(x.unitId ? { transaction_unit_id: x.unitId } : {}),
       unit_price: x.unitPrice,
       discount: x.discount,
       tax_rate_id: x.taxRateId || null,

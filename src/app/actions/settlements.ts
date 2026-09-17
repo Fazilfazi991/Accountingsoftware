@@ -203,7 +203,7 @@ export async function getSettlementData(): Promise<
       client
         .from("products")
         .select(
-          "id,name,sku,kind,track_inventory,unit_id,inventory_units(code)",
+          "id,name,sku,kind,track_inventory,unit_id,inventory_units:inventory_units!products_unit_id_fkey(code)",
         )
         .eq("organization_id", org),
       client

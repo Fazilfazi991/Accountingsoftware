@@ -8,6 +8,7 @@ export type BusinessDocumentLine = {
   productId: string;
   description: string;
   quantity: number;
+  unitId?: string;
   unitPrice: number;
   discount: number;
   taxRateId: string;
@@ -44,6 +45,7 @@ export function newLine(data: BusinessDocumentChoices, kind: BusinessDocumentKin
     productId: p?.id || "",
     description: p?.name || "",
     quantity: 1,
+    unitId: p?.unit_id || undefined,
     unitPrice:
       Number(kind === "invoice" ? p?.sales_price : p?.purchase_price) || 0,
     discount: 0,
@@ -72,6 +74,7 @@ export function productSelectionPatch(
   return {
     productId,
     description: p?.name || "",
+    unitId: p?.unit_id || undefined,
     unitPrice:
       Number(kind === "invoice" ? p?.sales_price : p?.purchase_price) || 0,
     taxRateId: p?.tax_rate_id || "",

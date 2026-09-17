@@ -20,7 +20,7 @@ export async function getSalesWorkflowData(kind:"quotation"|"delivery_note"|"inv
     const context=await requireOrganizationContext(), client=await createClient(), org=context.organization.id, f=parsed.data, pageSize=25;
     const [customers,products,accounts,taxRates,conversions]=await Promise.all([
       client.from("customers").select("id,name").eq("organization_id",org).eq("is_active",true).order("name"),
-      client.from("products").select("id,name,sku,sales_price,tax_rate_id,unit_id,inventory_units(code)").eq("organization_id",org).eq("status","active").order("name"),
+      client.from("products").select("id,name,sku,sales_price,tax_rate_id,unit_id,secondary_unit_id,secondary_conversion_factor,inventory_units:inventory_units!products_unit_id_fkey(id,code,name,status),secondary_unit:inventory_units!products_secondary_unit_id_fkey(id,code,name,status)").eq("organization_id",org).eq("status","active").order("name"),
       client.from("accounts").select("id,name,account_type").eq("organization_id",org).eq("is_active",true).eq("account_type","income").order("code"),
       client.from("tax_rates").select("id,name,rate_percent,sales_enabled").eq("organization_id",org).eq("is_active",true),
       client.from("document_conversion_lines").select("*").eq("organization_id",org),
@@ -29,15 +29,15 @@ export async function getSalesWorkflowData(kind:"quotation"|"delivery_note"|"inv
     if(kind==="quotation"){
       let q=client.from("sales_quotations").select("*,customers(name)").eq("organization_id",org).order("quotation_date",{ascending:false});
       if(f.customerId) q=q.eq("customer_id",f.customerId); if(f.from) q=q.gte("quotation_date",f.from); if(f.to) q=q.lte("quotation_date",f.to);
-      documents=await q; lines=await client.from("sales_quotation_lines").select("*,products(name,sku,inventory_units(code))").eq("organization_id",org);
+      documents=await q; lines=await client.from("sales_quotation_lines").select("*,products(name,sku,inventory_units:inventory_units!products_unit_id_fkey(code))").eq("organization_id",org);
     } else if(kind==="delivery_note"){
       let q=client.from("delivery_notes").select("*,customers(name)").eq("organization_id",org).order("delivery_date",{ascending:false});
       if(f.customerId) q=q.eq("customer_id",f.customerId); if(f.from) q=q.gte("delivery_date",f.from); if(f.to) q=q.lte("delivery_date",f.to);
-      documents=await q; lines=await client.from("delivery_note_lines").select("*,products(name,sku,inventory_units(code))").eq("organization_id",org);
+      documents=await q; lines=await client.from("delivery_note_lines").select("*,products(name,sku,inventory_units:inventory_units!products_unit_id_fkey(code))").eq("organization_id",org);
     } else {
       let q=client.from("sales_invoices").select("*,customers(name)").eq("organization_id",org).order("invoice_date",{ascending:false});
       if(f.customerId) q=q.eq("customer_id",f.customerId); if(f.from) q=q.gte("invoice_date",f.from); if(f.to) q=q.lte("invoice_date",f.to);
-      documents=await q; lines=await client.from("sales_invoice_lines").select("*,products(name,sku,inventory_units(code))").eq("organization_id",org);
+      documents=await q; lines=await client.from("sales_invoice_lines").select("*,products(name,sku,inventory_units:inventory_units!products_unit_id_fkey(code))").eq("organization_id",org);
     }
     const failed=[customers,products,accounts,taxRates,conversions,documents,lines].find(x=>x.error); if(failed?.error) return {error:"Unable to load sales documents. Apply the latest database migration first."};
     let docs=documents.data||[], ls=lines.data||[];
@@ -56,7 +56,7 @@ export async function getSalesWorkflowData(kind:"quotation"|"delivery_note"|"inv
 export async function saveOperationalDocument(raw:unknown){
  const parsed=operationalDocumentSchema.safeParse(raw); if(!parsed.success) return {error:"Enter valid document details and at least one line."};
  try { const context=await requireOrganizationContext(),client=await createClient(),p=parsed.data;
-  const rpcLines=p.lines.map(x=>({product_id:x.productId,description:x.description,quantity:x.quantity,unit_price:x.unitPrice,discount:x.discount,tax_rate_id:x.taxRateId||null,revenue_account_id:x.accountId}));
+  const rpcLines=p.lines.map(x=>({product_id:x.productId,description:x.description,quantity:x.quantity,transaction_unit_id:x.unitId||null,unit_price:x.unitPrice,discount:x.discount,tax_rate_id:x.taxRateId||null,revenue_account_id:x.accountId}));
   const rpcAllocations=p.allocations.map(x=>({source_type:x.sourceType,source_document_id:x.sourceDocumentId,source_line_id:x.sourceLineId,quantity:x.quantity}));
   const convertedDelivery=p.kind==="delivery_note"&&!p.id&&p.allocations.length>0;
   const {data,error}=convertedDelivery
@@ -71,10 +71,10 @@ export async function saveOperationalDocument(raw:unknown){
 export async function getConversionSources(type:"quotation"|"delivery_note", ids:string[]){
  const valid=z.array(uuid).min(1).max(50).safeParse(ids); if(!valid.success)return {error:"Choose valid source documents."};
  try{const context=await requireOrganizationContext(),client=await createClient(),org=context.organization.id, docTable=type==="quotation"?"sales_quotations":"delivery_notes",lineTable=type==="quotation"?"sales_quotation_lines":"delivery_note_lines",fk=type==="quotation"?"quotation_id":"delivery_note_id";
-  const [docs,lines,used]=await Promise.all([client.from(docTable).select("*").eq("organization_id",org).in("id",valid.data),client.from(lineTable).select("*,products(name,sku,inventory_units(code))").eq("organization_id",org).in(fk,valid.data),client.from("document_conversion_lines").select("source_line_id,quantity").eq("organization_id",org).eq("source_type",type).in("source_document_id",valid.data)]);
+  const [docs,lines,used]=await Promise.all([client.from(docTable).select("*").eq("organization_id",org).in("id",valid.data),client.from(lineTable).select("*,products(name,sku,inventory_units:inventory_units!products_unit_id_fkey(code))").eq("organization_id",org).in(fk,valid.data),client.from("document_conversion_lines").select("source_line_id,quantity").eq("organization_id",org).eq("source_type",type).in("source_document_id",valid.data)]);
   if(docs.error||lines.error||used.error)return {error:"Unable to load conversion sources."}; const d=docs.data||[]; if(d.length!==valid.data.length||new Set(d.map((x:any)=>`${x.customer_id}:${x.branch_id}`)).size!==1)return {error:"Selected documents must belong to the same customer and branch."};
   const consumed=new Map<string,number>(); for(const x of used.data||[])consumed.set(x.source_line_id,(consumed.get(x.source_line_id)||0)+Number(x.quantity));
-  return {customerId:d[0].customer_id,documents:d,lines:(lines.data||[]).map((x:any)=>({...x,sourceType:type,sourceDocumentId:x[fk],remaining:Math.max(0,Number(x.quantity)-(consumed.get(x.id)||0))})).filter((x:any)=>x.remaining>0)};
+  return {customerId:d[0].customer_id,documents:d,lines:(lines.data||[]).map((x:any)=>{const remaining=Math.max(0,Number(x.quantity)-(consumed.get(x.id)||0));return {...x,sourceType:type,sourceDocumentId:x[fk],remaining,transactionRemaining:remaining*Number(x.conversion_factor||1)}}).filter((x:any)=>x.remaining>0)};
  }catch{return {error:"Unable to load conversion sources."};}
 }
 
@@ -86,5 +86,5 @@ export async function recordInvoiceConversions(invoiceId:string, allocations:any
 export async function saveConvertedInvoice(raw:unknown){
  const parsed=z.object({customerId:uuid,documentDate:z.string().date(),dueDate:z.string().date(),reference:z.string().trim().max(120).optional(),notes:z.string().trim().max(500).optional(),lines:z.array(operationalLineSchema).min(1),allocations:z.array(z.object({sourceType:z.enum(["quotation","delivery_note"]),sourceDocumentId:uuid,sourceLineId:uuid,quantity:z.coerce.number().positive()})).min(1)}).safeParse(raw);
  if(!parsed.success||parsed.data.dueDate<parsed.data.documentDate)return{error:"Enter valid converted invoice details."};
- try{const context=await requireOrganizationContext(),client=await createClient(),p=parsed.data,{data,error}=await client.rpc("create_converted_sales_invoice_draft",{p_organization_id:context.organization.id,p_customer_id:p.customerId,p_invoice_date:p.documentDate,p_due_date:p.dueDate,p_lines:p.lines.map(x=>({description:x.description,quantity:x.quantity,unit_price:x.unitPrice,discount:x.discount,tax_rate_id:x.taxRateId||null,product_id:x.productId,inventory_location_id:(x as any).locationId||null,revenue_account_id:x.accountId})),p_allocations:p.allocations.map(x=>({source_type:x.sourceType,source_document_id:x.sourceDocumentId,source_line_id:x.sourceLineId,quantity:x.quantity})),p_branch_id:context.branch.id,p_reference:p.reference||null,p_notes:p.notes||null});if(error)return{error:error.message};revalidatePath("/","layout");return{id:String(data)};}catch{return{error:"Unable to save converted invoice atomically."};}
+ try{const context=await requireOrganizationContext(),client=await createClient(),p=parsed.data,{data,error}=await client.rpc("create_converted_sales_invoice_draft",{p_organization_id:context.organization.id,p_customer_id:p.customerId,p_invoice_date:p.documentDate,p_due_date:p.dueDate,p_lines:p.lines.map(x=>({description:x.description,quantity:x.quantity,transaction_unit_id:(x as any).unitId||null,unit_price:x.unitPrice,discount:x.discount,tax_rate_id:x.taxRateId||null,product_id:x.productId,inventory_location_id:(x as any).locationId||null,revenue_account_id:x.accountId})),p_allocations:p.allocations.map(x=>({source_type:x.sourceType,source_document_id:x.sourceDocumentId,source_line_id:x.sourceLineId,quantity:x.quantity})),p_branch_id:context.branch.id,p_reference:p.reference||null,p_notes:p.notes||null});if(error)return{error:error.message};revalidatePath("/","layout");return{id:String(data)};}catch{return{error:"Unable to save converted invoice atomically."};}
 }

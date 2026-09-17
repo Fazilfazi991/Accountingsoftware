@@ -12,6 +12,7 @@ import {
 import { getConversionSources, saveConvertedInvoice } from "@/app/actions/sales-workflow";
 import { dubaiCalendarDate } from "@/lib/dubai-date";
 import { calculateBusinessDocumentTotals } from "@/lib/business-document-totals";
+import { normalizeToPrimary, rateForUnit, validProductUnits } from "@/lib/uom";
 import {
   newLine,
   productSelectionPatch,
@@ -71,8 +72,9 @@ export function BusinessDocumentWorkflow({
           sourceLines.map((x: any) => ({
             productId: x.product_id,
             description: x.description,
-            quantity: Number(x.quantity),
-            unitPrice: Number(x.unit_price),
+            quantity: Number(x.transaction_quantity ?? x.quantity),
+            unitId: x.transaction_unit_id || result.products.find((p:any) => p.id === x.product_id)?.unit_id || "",
+            unitPrice: Number(x.transaction_unit_price ?? x.unit_price),
             discount: Number(x.discount),
             taxRateId: x.tax_rate_id || "",
             accountId: savedLineAccount(
@@ -97,12 +99,13 @@ export function BusinessDocumentWorkflow({
             if (!dirty.current.party) setParty(sources.customerId);
             if (!dirty.current.reference) setReference(`Created from ${sources.documents.map((x: any) => x.quotation_number || x.delivery_note_number).join(", ")}`);
             if (!dirty.current.lines) setLines(sources.lines.map((x: any) => ({
-              productId:x.product_id, description:x.description, quantity:x.remaining,
-              unitPrice:Number(x.unit_price), discount:Number(x.discount)*Number(x.remaining)/Number(x.quantity), taxRateId:x.tax_rate_id||"",
+              productId:x.product_id, description:x.description, quantity:x.transactionRemaining,
+              unitId:x.transaction_unit_id || result.products.find((p:any) => p.id === x.product_id)?.unit_id || "",
+              unitPrice:Number(x.transaction_unit_price ?? x.unit_price), discount:Number(x.discount)*Number(x.remaining)/Number(x.quantity), taxRateId:x.tax_rate_id||"",
               accountId:savedLineAccount(x.revenue_account_id,result,"invoice"),
               locationId: result.locations.find((l:any)=>l.is_default)?.id || result.locations[0]?.id || "",
-              sourceType:x.sourceType, sourceDocumentId:x.sourceDocumentId, sourceLineId:x.id, remaining:x.remaining,
-              sourceDiscountPerUnit:Number(x.discount)/Number(x.quantity),
+              sourceType:x.sourceType, sourceDocumentId:x.sourceDocumentId, sourceLineId:x.id, remaining:x.transactionRemaining,
+              sourceDiscountPerUnit:Number(x.discount)/Number(x.transaction_quantity ?? x.quantity),
             })));
           });
         }
@@ -153,15 +156,21 @@ export function BusinessDocumentWorkflow({
     const p = data.products.find((x) => x.id === line.productId);
     return p?.kind === "product" && p.track_inventory;
   };
+  const normalized = (line: Line) => {
+    const product = data.products.find((x) => x.id === line.productId);
+    if (!product || !line.unitId) return line.quantity;
+    try { return Number(normalizeToPrimary(line.quantity, line.unitId, product)); }
+    catch { return Number.POSITIVE_INFINITY; }
+  };
   const oversale =
     kind === "invoice" &&
-    lines.some((x) => tracked(x) && x.quantity > available(x));
+    lines.some((x) => tracked(x) && normalized(x) > available(x));
   const { subtotal, vat, total } = calculateBusinessDocumentTotals(lines, data.taxRates);
   async function save(post: boolean) {
     setBusy(true);
     setError("");
     const allocations = lines.filter((x) => x.sourceLineId).map((x) => ({
-      sourceType:x.sourceType!, sourceDocumentId:x.sourceDocumentId!, sourceLineId:x.sourceLineId!, quantity:x.quantity,
+      sourceType:x.sourceType!, sourceDocumentId:x.sourceDocumentId!, sourceLineId:x.sourceLineId!, quantity:normalized(x),
     }));
     const payload = {
       id,
@@ -273,10 +282,11 @@ export function BusinessDocumentWorkflow({
         <div className="line-editor inventory-document-lines">
           {lines.map((line, index) => {
             const p = data.products.find((x) => x.id === line.productId),
+              units = p ? validProductUnits(p) : [],
               isTracked = tracked(line),
               stock = available(line),
               warning =
-                kind === "invoice" && isTracked && line.quantity > stock;
+                kind === "invoice" && isTracked && normalized(line) > stock;
             return (
               <div className="line-row inventory-document-line" key={index}>
                 <label>
@@ -308,7 +318,18 @@ export function BusinessDocumentWorkflow({
                 {line.sourceLineId && <span className="notice">Source line · maximum remaining {line.remaining}</span>}
                 <label>
                   Unit
-                  <input value={p?.inventory_units?.code || "—"} readOnly />
+                  <select
+                    value={line.unitId}
+                    disabled={units.length <= 1 || Boolean(line.sourceLineId)}
+                    onChange={(e) => {
+                      const unitId = e.target.value;
+                      const primaryRate = kind === "invoice" ? p?.sales_price : p?.purchase_price;
+                      change(index, { unitId, unitPrice: Number(rateForUnit(primaryRate || 0, unitId, p)) });
+                    }}
+                  >
+                    {!units.length && <option value="">No unit</option>}
+                    {units.map((unit) => <option key={unit.id} value={unit.id}>{unit.code}</option>)}
+                  </select>
                 </label>
                 <label>
                   Unit price
