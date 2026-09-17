@@ -92,11 +92,6 @@ const subscribeSidebarPreference = (onStoreChange: () => void) => {
 const getSidebarPreference = () =>
   window.localStorage.getItem(sidebarPreferenceKey) === "true";
 
-export function OrganizationIdentity() {
-  const { organization, branch } = useOrganizationContext();
-  return <div className="company"><span>{organization.name}</span><small>{branch.name}</small></div>;
-}
-
 export function OrganizationSwitcher() {
   const { organization, organizations, branch, branches } = useOrganizationContext();
   const router = useRouter();
@@ -206,11 +201,10 @@ export function Sidebar({ groups, route, collapsed, onToggleCollapsed, onNavigat
   return (
     <aside className={collapsed ? "sidebar collapsed" : "sidebar"}>
       <div className="brand">
-        <BrandLogo variant="dark" className="brand-logo" />
+        <BrandLogo variant="dark" className="brand-logo" priority />
         <span className="brand-collapsed-mark" aria-hidden="true">F</span>
         <button className="mobile-close" aria-label="Close navigation" onClick={onNavigate}><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18" /></svg></button>
       </div>
-      <OrganizationIdentity />
       <nav className="desktop-nav" aria-label="Primary navigation">
         {groups.map((group, groupIndex) => {
           const active = groupIsActive(group, route);
