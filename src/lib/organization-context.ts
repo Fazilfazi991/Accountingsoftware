@@ -14,11 +14,14 @@ export type OrganizationContextPayload = {
 
 export async function requireOrganizationContext() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: claimsData } = await supabase.auth.getClaims();
+  const claims = claimsData?.claims;
+  const user = claims?.sub ? { id: claims.sub, email: typeof claims.email === "string" ? claims.email : undefined } : null;
   if (!user) redirect("/login");
-  const [{ data: profile }, { data: memberships }] = await Promise.all([
+  const [{ data: profile }, { data: memberships }, { data: visibleBranches }] = await Promise.all([
     supabase.from("profiles").select("display_name").eq("id", user.id).maybeSingle(),
     supabase.from("organization_memberships").select("id, organization_id, default_branch_id, role, is_owner, organizations!inner(id,name,legal_name,trn,email,phone,address,emirate,country_code,base_currency,timezone,status)").eq("user_id", user.id).eq("membership_status", "active").eq("organizations.status", "active"),
+    supabase.from("branches").select("id,organization_id,name,code,address,email,phone,default_inventory_location_id,status").order("name"),
   ]);
   if (!memberships?.length) redirect("/onboarding");
   const store = await cookies();
@@ -26,7 +29,7 @@ export async function requireOrganizationContext() {
   const membership = memberships.find((item) => item.organization_id === requestedOrganizationId) ?? memberships[0];
   const organization = Array.isArray(membership.organizations) ? membership.organizations[0] : membership.organizations;
   if (!organization) redirect("/onboarding");
-  const { data: allBranches } = await supabase.from("branches").select("id,name,code,address,email,phone,default_inventory_location_id,status").eq("organization_id", organization.id).order("name");
+  const allBranches = visibleBranches?.filter((item) => item.organization_id === organization.id);
   const branches = allBranches ?? [];
   const activeBranches = branches.filter((item) => item.status === "active");
   if (!activeBranches?.length) redirect("/onboarding");
