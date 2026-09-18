@@ -4,7 +4,7 @@
   min-height: 0;
   color: #17243a;
   background: #f5f7fa;
-  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-family: var(--font-geist-sans), Inter, "Segoe UI", Arial, sans-serif;
 }
 
 .workspace {
@@ -36,7 +36,7 @@
   margin: 0;
   color: #152238;
   font-size: 24px;
-  font-weight: 760;
+  font-weight: 600;
   letter-spacing: -.03em;
   line-height: 1.15;
 }
@@ -62,7 +62,7 @@
   padding: 8px 13px;
   font: inherit;
   font-size: 13px;
-  font-weight: 720;
+  font-weight: 500;
   cursor: pointer;
 }
 
@@ -285,7 +285,7 @@
   margin: 0 auto;
   color: #17243a;
   font-size: clamp(30px, 3.2vw, 42px);
-  font-weight: 680;
+  font-weight: 600;
   letter-spacing: -.04em;
   line-height: 1.08;
   text-wrap: balance;
@@ -393,7 +393,7 @@
   margin: 0 0 9px;
   color: #4f6378;
   font-size: 12px;
-  font-weight: 750;
+  font-weight: 500;
   letter-spacing: .01em;
 }
 
@@ -411,7 +411,7 @@
   padding: 7px 12px;
   font: inherit;
   font-size: 12px;
-  font-weight: 670;
+  font-weight: 500;
   cursor: pointer;
 }
 
@@ -480,7 +480,7 @@
   margin-bottom: 5px;
   color: #718195;
   font-size: 11px;
-  font-weight: 760;
+  font-weight: 500;
 }
 
 .userTurn p {
@@ -516,7 +516,7 @@
   color: #195b91;
   background: #eef5fb;
   font-size: 10px;
-  font-weight: 760;
+  font-weight: 500;
 }
 
 .answerText {
@@ -621,7 +621,7 @@
   min-height: 36px;
   color: #285d88;
   font-size: 13px;
-  font-weight: 720;
+  font-weight: 500;
   cursor: pointer;
 }
 
@@ -667,7 +667,7 @@
   color: #ffffff;
   background: #1f639f;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 500;
   text-decoration: none;
 }
 
@@ -797,7 +797,7 @@
   background: #ffffff;
   font: inherit;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 500;
   cursor: pointer;
 }
 
