@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   rpc: vi.fn(),
+  from: vi.fn(),
   revalidatePath: vi.fn(),
   requireOrganizationContext: vi.fn(),
   createClient: vi.fn(),
@@ -41,10 +42,15 @@ function bill(account: string) {
 describe("purchase bill save account mapping", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.requireOrganizationContext.mockResolvedValue({
+  mocks.requireOrganizationContext.mockResolvedValue({
       organization: { id: orgId }, branch: { id: branchId },
     });
-    mocks.createClient.mockResolvedValue({ rpc: mocks.rpc });
+    mocks.createClient.mockResolvedValue({ rpc: mocks.rpc, from: mocks.from });
+    mocks.from.mockReturnValue({
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      in: vi.fn().mockResolvedValue({ data: [{ id: accountId, account_type: "expense" }], error: null }),
+    });
     mocks.rpc.mockResolvedValue({ data: "bill-id", error: null });
   });
 
@@ -77,5 +83,55 @@ describe("purchase bill save account mapping", () => {
       p_reference: null,
       p_notes: null,
     });
+  });
+
+  it("rejects a cross-organization or ineligible account before the RPC", async () => {
+    mocks.from.mockReturnValue({
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      in: vi.fn().mockResolvedValue({ data: [], error: null }),
+    });
+    const result = await saveBusinessDocument(bill(accountId));
+    expect(result).toEqual({ error: "Line 1: Account is required or invalid." });
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+});
+
+describe("sales invoice save account validation", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.requireOrganizationContext.mockResolvedValue({
+      organization: { id: orgId }, branch: { id: branchId },
+    });
+    mocks.createClient.mockResolvedValue({ rpc: mocks.rpc, from: mocks.from });
+    mocks.from.mockReturnValue({
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      in: vi.fn().mockResolvedValue({ data: [{ id: accountId, account_type: "income" }], error: null }),
+    });
+    mocks.rpc.mockResolvedValue({ data: "invoice-id", error: null });
+  });
+
+  const invoice = (account: string) => ({
+    kind: "invoice" as const,
+    partyId: supplierId,
+    documentDate: "2026-09-15",
+    dueDate: "2026-09-15",
+    lines: [{ productId, description: "Sale", quantity: 1, unitPrice: 25, discount: 0, accountId: account }],
+  });
+
+  it("rejects a fresh invoice line without an explicit account", async () => {
+    const result = await saveBusinessDocument(invoice(""));
+    expect(result).toEqual({ error: "Line 1: Account is required or invalid." });
+    expect(mocks.requireOrganizationContext).not.toHaveBeenCalled();
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
+  it("keeps an explicitly selected income account in the invoice RPC payload", async () => {
+    const result = await saveBusinessDocument(invoice(accountId));
+    expect(result).toEqual({ id: "invoice-id" });
+    expect(mocks.rpc).toHaveBeenCalledWith("create_sales_invoice_draft", expect.objectContaining({
+      p_lines: [expect.objectContaining({ revenue_account_id: accountId })],
+    }));
   });
 });

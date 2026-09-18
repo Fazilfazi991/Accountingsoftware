@@ -61,22 +61,32 @@ describe("purchase bill account initialization", () => {
   });
 
   it("preserves a saved draft account exactly, including a prior Rent Expense choice", () => {
-    expect(savedLineAccount(accountId, data(), "bill")).toBe(accountId);
-    expect(savedLineAccount(otherAccountId, data(), "bill")).toBe(otherAccountId);
+    expect(savedLineAccount(accountId)).toBe(accountId);
+    expect(savedLineAccount(otherAccountId)).toBe(otherAccountId);
   });
 
   it("keeps a missing or null saved draft account empty", () => {
-    expect(savedLineAccount(null, data(), "bill")).toBe("");
-    expect(savedLineAccount(undefined, data(), "bill")).toBe("");
+    expect(savedLineAccount(null)).toBe("");
+    expect(savedLineAccount(undefined)).toBe("");
   });
 
-  it("leaves the existing sales invoice revenue default unchanged", () => {
+  it("starts a new sales invoice line with no account selected", () => {
     const invoiceData = data();
     invoiceData.accounts.push({
       id: revenueAccountId, account_type: "income", system_key: "sales_revenue",
     });
-    expect(newLine(invoiceData, "invoice").accountId).toBe(revenueAccountId);
-    expect(savedLineAccount(null, invoiceData, "invoice")).toBe(revenueAccountId);
+    expect(newLine(invoiceData, "invoice").accountId).toBe("");
+    expect(savedLineAccount(null)).toBe("");
+  });
+
+  it("preserves an explicitly selected invoice account across product changes", () => {
+    const invoiceData = data();
+    invoiceData.accounts.push({
+      id: revenueAccountId, account_type: "income", system_key: "sales_revenue",
+    });
+    const selected = { ...newLine(invoiceData, "invoice"), accountId: revenueAccountId };
+    expect(productSelectionPatch(invoiceData, "invoice", productId)).not.toHaveProperty("accountId");
+    expect({ ...selected, ...productSelectionPatch(invoiceData, "invoice", productId) }).toMatchObject({ accountId: revenueAccountId });
   });
 
   it("cannot validate a new bill without Account and gives the line-specific error", () => {

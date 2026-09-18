@@ -23,21 +23,15 @@ export type BusinessDocumentLine = {
   sourceDiscountPerUnit?: number;
 };
 
-function defaultAccount(data: BusinessDocumentChoices, kind: BusinessDocumentKind) {
-  if (kind === "bill") return "";
-  return (
-    data.accounts.find((x) => x.system_key === "sales_revenue")?.id ||
-    data.accounts.find((x) => x.account_type === "income")?.id ||
-    ""
-  );
+function defaultAccount() {
+  // New lines require explicit account selection for both document kinds.
+  return "";
 }
 
 export function savedLineAccount(
   savedAccountId: string | null | undefined,
-  data: BusinessDocumentChoices,
-  kind: BusinessDocumentKind,
 ) {
-  return savedAccountId || defaultAccount(data, kind);
+  return savedAccountId || defaultAccount();
 }
 
 export function newLine(data: BusinessDocumentChoices, kind: BusinessDocumentKind): BusinessDocumentLine {
@@ -54,7 +48,7 @@ export function newLine(data: BusinessDocumentChoices, kind: BusinessDocumentKin
     discountType: "fixed",
     discountValue: 0,
     taxRateId: p?.tax_rate_id || "",
-    accountId: defaultAccount(data, kind),
+    accountId: defaultAccount(),
     locationId: tracked
       ? data.locations.find((x) => x.is_default)?.id ||
         data.locations[0]?.id ||

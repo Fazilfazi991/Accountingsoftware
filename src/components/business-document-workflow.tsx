@@ -88,8 +88,6 @@ export function BusinessDocumentWorkflow({
             taxRateId: x.tax_rate_id || "",
             accountId: savedLineAccount(
               x[kind === "invoice" ? "revenue_account_id" : "expense_account_id"],
-              result,
-              kind,
             ),
             locationId: x.inventory_location_id || "",
           })),
@@ -111,7 +109,7 @@ export function BusinessDocumentWorkflow({
               productId:x.product_id, description:x.description, quantity:x.transactionRemaining,
               unitId:x.transaction_unit_id || result.products.find((p:any) => p.id === x.product_id)?.unit_id || "",
               unitPrice:Number(x.transaction_unit_price ?? x.unit_price), discount:Number(x.discount)*Number(x.remaining)/Number(x.quantity), taxRateId:x.tax_rate_id||"",
-              accountId:savedLineAccount(x.revenue_account_id,result,"invoice"),
+              accountId:savedLineAccount(x.revenue_account_id),
               locationId: result.locations.find((l:any)=>l.is_default)?.id || result.locations[0]?.id || "",
               sourceType:x.sourceType, sourceDocumentId:x.sourceDocumentId, sourceLineId:x.id, remaining:x.transactionRemaining,
               sourceDiscountPerUnit:Number(x.discount)/Number(x.transaction_quantity ?? x.quantity),

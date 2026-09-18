@@ -178,6 +178,24 @@ export async function saveBusinessDocument(
     const context = await requireOrganizationContext(),
       client = await createClient(),
       p = parsed.data;
+    const accountIds = [...new Set(p.lines.map((line) => line.accountId))],
+      accountsResult = await client
+        .from("accounts")
+        .select("id,account_type")
+        .eq("organization_id", context.organization.id)
+        .eq("is_active", true)
+        .in("id", accountIds);
+    if (accountsResult.error)
+      return { error: "Unable to validate the selected accounting accounts." };
+    const expectedTypes = p.kind === "invoice" ? ["income"] : ["expense", "asset"],
+      validAccounts = new Set(
+        (accountsResult.data || [])
+          .filter((account) => expectedTypes.includes(account.account_type))
+          .map((account) => account.id),
+      ),
+      invalidLine = p.lines.findIndex((line) => !validAccounts.has(line.accountId));
+    if (invalidLine >= 0)
+      return { error: `Line ${invalidLine + 1}: Account is required or invalid.` };
     const lines = p.lines.map((x) => ({
       description: x.description,
       quantity: x.quantity,
