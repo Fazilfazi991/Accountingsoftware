@@ -429,3 +429,30 @@ strong, b { font-weight: var(--weight-semibold); }
   .content { padding-inline: 12px; }
   .metric-grid, .dashboard-primary-kpis { grid-template-columns: 1fr; }
 }
+
+/* Adaptive layout primitives: reflow from the available content column, not the viewport. */
+.app, .main, .content, .topbar, .content > * { min-width: 0; max-width: 100%; }
+.main { width: 0; flex: 1 1 auto; }
+.topbar-page-name, .context-switchers, .context-label { min-width: 0; }
+.topbar-page-name, .context-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.context-switchers { flex-wrap: wrap; justify-content: flex-end; }
+.page-header, .header-actions, .form-actions { min-width: 0; max-width: 100%; }
+.page-header > *, .header-actions > *, .form-actions > * { min-width: 0; max-width: 100%; }
+.form-panel, .settlement-form, .line-editor, .split-payments, .invoice-adjustments { container-type: inline-size; }
+.form-grid, .line-row, .inventory-document-line, .operational-lines .line-row, .split-payment-row, .allocation-card { min-width: 0; }
+
+@container (max-width: 900px) {
+  .inventory-document-line, .operational-lines .line-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .split-payment-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .split-payment-row .searchable-field { grid-column: 1 / -1; }
+}
+
+@container (max-width: 650px) {
+  .inventory-document-line, .operational-lines .line-row, .split-payment-row, .allocation-card { grid-template-columns: 1fr; }
+  .split-payment-row .searchable-field { grid-column: auto; }
+  .totals, .settlement-summary { width: 100%; margin-inline: 0; }
+}
+
+@media (max-width: 760px) {
+  .topbar-page-name { max-width: 42vw; }
+}
